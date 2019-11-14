@@ -345,11 +345,6 @@ class ElSys:
 		#системе назначить аппарат равный максимальному
 		elif self.IsLocked:
 			if isD:
-				brdMax = self.CBCurrent
-				for brd in downBrds:
-						brd.QF = brdMax
-						param = "MC Frame Size"
-						SetupParVal(brd.Board, param, brdMax)
 				boardNewQF = [i for i in standartQF if i > self.CBCurrent][0]
 				if objUpperBrd.QF < boardNewQF:
 					objUpperBrd.QF = boardNewQF
@@ -358,11 +353,6 @@ class ElSys:
 					self.isChanged = True
 				else: return None
 			else:
-				brdMax = max([i for i in standartQF if i < self.CBCurrent])
-				for brd in downBrds:
-					brd.QF = brdMax
-					param = "MC Frame Size"
-					SetupParVal(brd.Board, param, brdMax)
 				boardNewQF = [i for i in standartQF if i > self.CBCurrent][0]
 				if objUpperBrd.QF < boardNewQF:
 					objUpperBrd.QF = boardNewQF
