@@ -291,11 +291,12 @@ class ElSys:
 		calcSystem = self.Sys
 		rvtBoards = self.brds
 		rvtBrdId = [i.Id for i in rvtBoards]
+		upperBoard = self.board
+		objUpperBrd = [brd for brd in boards if upperBoard.Id == brd.Board.Id][0]
 		downBrds = [brd for brd in boards if brd.Board.Id in rvtBrdId]
-		isD = all([brd.IsDisconnector for brd in downBrds])
 		#если щитов нет - проверка на селективность не нужна
-		#или один или несколько щитов в шлейфе с рубильниками
-		if not downBrds or isD: return None
+		if not downBrds: return None
+		isD = all([brd.IsDisconnector for brd in downBrds])
 		
 		#Во всех щитах найти аппараты на вводе.
 		brdQF = [int(brd.QF) for brd in downBrds]
@@ -308,7 +309,7 @@ class ElSys:
 			SetupParVal(brd.Board, param, brdMax)
 
 		#системе назначить аппарат на ступень больше максимального
-		if not(self.IsLocked):
+		if not(self.IsLocked) and not isD:
 			sysNewQF = [i for i in standartQF if i > brdMax][0]
 			self.CBCurrent = int(sysNewQF)
 			param = "RBS_ELEC_CIRCUIT_RATING_PARAM"
@@ -316,22 +317,60 @@ class ElSys:
 			param = "MC Frame Size"
 			SetupParVal(calcSystem, param, int(sysNewQF))
 			doc.Regenerate()
-		else:
-			sysNewQF = self.CBCurrent
-		#щиту, от которого питается система, необходимо 
-		#скорректировать уставку
-		boardNewQF = [i for i in standartQF if i > sysNewQF][0]
-		upperBoard = self.board
-		objUpperBrd = [brd for brd in boards if upperBoard.Id == brd.Board.Id]
-		if not (objUpperBrd):
-			return None
-		objUpperBrd = objUpperBrd[0]
-		if objUpperBrd.QF < boardNewQF:
-			objUpperBrd.QF = boardNewQF
-			objUpperBrd.Board.LookupParameter("MC Frame Size").Set(boardNewQF)
-			#установить отметку, что в системе произошли изменения.
-			self.isChanged = True
+			boardNewQF = [i for i in standartQF if i > sysNewQF][0]
+			if objUpperBrd.QF < boardNewQF:
+				objUpperBrd.QF = boardNewQF
+				objUpperBrd.Board.LookupParameter("MC Frame Size").Set(boardNewQF)
+				#установить отметку, что в системе произошли изменения.
+				self.isChanged = True
+			else: return None
+		
+		#системе назначить аппарат равный максимальному
+		elif not(self.IsLocked) and isD:
+			sysNewQF = brdMax
+			self.CBCurrent = int(sysNewQF)
+			param = "RBS_ELEC_CIRCUIT_RATING_PARAM"
+			SetupParVal(calcSystem, param, int(sysNewQF))
+			param = "MC Frame Size"
+			SetupParVal(calcSystem, param, int(sysNewQF))
+			boardNewQF = [i for i in standartQF if i > sysNewQF][0]
+			doc.Regenerate()
+			if objUpperBrd.QF < boardNewQF:
+				objUpperBrd.QF = boardNewQF
+				objUpperBrd.Board.LookupParameter("MC Frame Size").Set(boardNewQF)
+				#установить отметку, что в системе произошли изменения.
+				self.isChanged = True
+			else: return None
 			
+		#системе назначить аппарат равный максимальному
+		elif self.IsLocked:
+			if isD:
+				brdMax = self.CBCurrent
+				for brd in downBrds:
+						brd.QF = brdMax
+						param = "MC Frame Size"
+						SetupParVal(brd.Board, param, brdMax)
+				boardNewQF = [i for i in standartQF if i > self.CBCurrent][0]
+				if objUpperBrd.QF < boardNewQF:
+					objUpperBrd.QF = boardNewQF
+					objUpperBrd.Board.LookupParameter("MC Frame Size").Set(boardNewQF)
+					#установить отметку, что в системе произошли изменения.
+					self.isChanged = True
+				else: return None
+			else:
+				brdMax = max([i for i in standartQF if i < self.CBCurrent])
+				for brd in downBrds:
+					brd.QF = brdMax
+					param = "MC Frame Size"
+					SetupParVal(brd.Board, param, brdMax)
+				boardNewQF = [i for i in standartQF if i > self.CBCurrent][0]
+				if objUpperBrd.QF < boardNewQF:
+					objUpperBrd.QF = boardNewQF
+					objUpperBrd.Board.LookupParameter("MC Frame Size").Set(boardNewQF)
+					#установить отметку, что в системе произошли изменения.
+					self.isChanged = True
+				else: return None
+
 	def SetCableType(self):
 		"""
 		Устанавливает сечение кабеля системы на основании 
