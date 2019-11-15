@@ -513,7 +513,7 @@ ruleList.append(FilterStringRule(pvp, fnrvStr, "KRA", False))
 ruleList.append(FilterStringRule(pvp, fnrvStr, "NOT", False))
 ruleList.append(FilterStringRule(pvp, fnrvStr, "PVA", False))
 elemFilterList = [ElementParameterFilter(x) for x in ruleList]
-filter = LogicalOrFilter(elemFilterList )
+filter = LogicalOrFilter(elemFilterList)
 
 rvtAllBoards = FilteredElementCollector(doc).\
 	OfCategory(BuiltInCategory.OST_ElectricalEquipment).\
