@@ -10,6 +10,9 @@ sys.path.append(pyt_path)
 import System
 from System import Array
 
+import itertools
+import math
+
 clr.AddReference("RevitServices")
 import RevitServices
 from RevitServices.Persistence import DocumentManager
@@ -20,12 +23,15 @@ def getSystems (_brd):
 	allsys = _brd.MEPModel.ElectricalSystems
 	lowsys = _brd.MEPModel.AssignedElectricalSystems
 	if lowsys:
+		outlist = list()
 		lowsysId = [i.Id for i in lowsys]
-		mainboard = [i for i in allsys if i.Id not in lowsysId][0]
+		mainboardsys = [i for i in allsys if i.Id not in lowsysId][0]
 		lowsys = [i for i in allsys if i.Id in lowsysId]
-		return mainboard, lowsys
+		outlist.append(mainboardsys)
+		map(lambda x: outlist.append(x), lowsys)
+		return outlist
 	else:
-		return None
+		return list(allsys)
 
 brdName = IN[0]
 reload = IN[1]
@@ -56,15 +62,27 @@ connectedBrds = FilteredElementCollector(doc).\
 connectedBrds = sorted(connectedBrds, key=lambda brd:brd.Name)
 
 lowbrds = list()
-lowbrds.append(mainBrd)
 map(lambda x: lowbrds.append(x), connectedBrds)
 
 lowbrds = [i for i in lowbrds if 
 			i.LookupParameter(
 			"MC Panel Code").AsString() == brdName]
 
-brdSystems = map(lambda x: getSystems(x), lowbrds)
+lowSystems = map(lambda x: getSystems(x), lowbrds)
+lowSystemsId = list(itertools.chain.from_iterable(lowSystems))
+lowSystemsId = [i.Id for i in lowSystemsId]
+
+mainSystems = [i for i in getSystems(mainBrd)
+				if i.Id not in lowSystemsId]
+
+allSystems = list()
+allSystems.append(mainSystems)
+map(lambda x: allSystems.append(x), lowSystems)
+
+pages = math.ceil((len(allSystems) + len(
+		list(itertools.chain.from_iterable(
+		allSystems))))/8.0)
 
 #======================
-OUT = brdSystems
+OUT = pages
 #======================
