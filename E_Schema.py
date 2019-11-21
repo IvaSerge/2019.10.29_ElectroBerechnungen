@@ -68,6 +68,7 @@ lowbrds = [i for i in lowbrds if
 			i.LookupParameter(
 			"MC Panel Code").AsString() == brdName]
 
+#get systems
 lowSystems = map(lambda x: getSystems(x), lowbrds)
 lowSystemsId = list(itertools.chain.from_iterable(lowSystems))
 lowSystemsId = [i.Id for i in lowSystemsId]
@@ -83,6 +84,35 @@ pages = math.ceil((len(allSystems) + len(
 		list(itertools.chain.from_iterable(
 		allSystems))))/8.0)
 
+#get TitleBlocks
+testParam = BuiltInParameter.SYMBOL_NAME_PARAM
+pvp = ParameterValueProvider(ElementId(int(testParam)))
+fnrvStr = FilterStringEquals()
+frule = FilterStringRule(pvp, fnrvStr, "WSP_Plankopf_Shema_Titelblatt", False)
+filter = ElementParameterFilter(frule)
+titleblatt = FilteredElementCollector(doc).\
+	OfCategory(BuiltInCategory.OST_TitleBlocks).\
+	WhereElementIsElementType().\
+	WherePasses(filter).\
+	FirstElement()
+
+testParam = BuiltInParameter.SYMBOL_NAME_PARAM
+pvp = ParameterValueProvider(ElementId(int(testParam)))
+fnrvStr = FilterStringEquals()
+frule = FilterStringRule(pvp, fnrvStr, "WSP_Plankopf_Shema", False)
+filter = ElementParameterFilter(frule)
+shemaPlankopf = FilteredElementCollector(doc).\
+	OfCategory(BuiltInCategory.OST_TitleBlocks).\
+	WhereElementIsElementType().\
+	WherePasses(filter).\
+	FirstElement()
+
+TransactionManager.Instance.EnsureInTransaction(doc)
+
+newSheet = ViewSheet.Create(doc, titleblatt.Id)
+
+TransactionManager.Instance.TransactionTaskDone()
+
 #======================
-OUT = pages
+OUT = newSheet
 #======================

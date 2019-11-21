@@ -606,7 +606,6 @@ if wireList:
 	param = "MC Frame Size"
 	paramList = [[i, param] for i in wireList]
 	map(UpdateWireParam, paramList)
-
 	param = "E_CableType"
 	paramList = [[i, param] for i in wireList]
 	map(UpdateWireParam, paramList)
