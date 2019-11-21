@@ -551,10 +551,26 @@ testBoardType = FilteredElementCollector(doc).\
 	WherePasses(filter).\
 	ToElements()[0]
 
+
+testParam = BuiltInParameter.SYMBOL_NAME_PARAM
+pvp = ParameterValueProvider(ElementId(int(testParam)))
+fnrvStr = FilterStringEquals()
+filter = ElementParameterFilter(FilterStringRule(
+									pvp, fnrvStr, "400/230", False))
+
+distrSys = FilteredElementCollector(doc).\
+	OfCategory(BuiltInCategory.OST_ElecDistributionSys).\
+	WhereElementIsElementType().\
+	WherePasses(filter).\
+	ToElements()[0].Id
+
 TransactionManager.Instance.EnsureInTransaction(doc)
 
 testBoard = doc.Create.NewFamilyInstance(
 		XYZ(0,0,0), testBoardType, Structure.StructuralType.NonStructural) 
+
+testBoard.get_Parameter(
+	BuiltInParameter.RBS_FAMILY_CONTENT_DISTRIBUTION_SYSTEM).Set(distrSys)
 
 boards = [Board(i) for i in rvtBoards]
 systems = [ElSys(i) for i in rvtSystems]
@@ -598,6 +614,6 @@ doc.Delete(testBoard.Id)
 
 TransactionManager.Instance.TransactionTaskDone()
 
-#OUT = outlist
+#OUT = distrSys
 #OUT = [i.Test for i in systems]
 #OUT = [i.Test for i in boards]
