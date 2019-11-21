@@ -602,18 +602,19 @@ wireList = FilteredElementCollector(doc).\
 	ToElements()
 wireList = [i for i in wireList if i.MEPSystem]
 
-param = "MC Frame Size"
-paramList = [[i, param] for i in wireList]
-map(UpdateWireParam, paramList)
+if wireList:
+	param = "MC Frame Size"
+	paramList = [[i, param] for i in wireList]
+	map(UpdateWireParam, paramList)
 
-param = "E_CableType"
-paramList = [[i, param] for i in wireList]
-map(UpdateWireParam, paramList)
+	param = "E_CableType"
+	paramList = [[i, param] for i in wireList]
+	map(UpdateWireParam, paramList)
 
 doc.Delete(testBoard.Id)
 
 TransactionManager.Instance.TransactionTaskDone()
 
-#OUT = distrSys
+#OUT = wireList
 #OUT = [i.Test for i in systems]
 #OUT = [i.Test for i in boards]
