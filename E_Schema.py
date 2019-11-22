@@ -35,38 +35,54 @@ def getSystems (_brd):
 
 def setPageParam(_lst):
 	global doc
+	global brdName
 	page = _lst[0]
 	pName = _lst[1]
 	pNumber = _lst[2]
 	page.get_Parameter(BuiltInParameter.SHEET_NAME).Set(pName)
 	page.get_Parameter(BuiltInParameter.SHEET_NUMBER).Set(pNumber)
+	page.LookupParameter("MC Panel Code").Set(brdName)
+
+def getByCatAndStrParam (_bic, _bip, _val, _isType):
+	global doc
+	if _isType:
+		fnrvStr = FilterStringEquals()
+		pvp = ParameterValueProvider(ElementId(int(_bip)))
+		frule = FilterStringRule(pvp, fnrvStr, _val, False)
+		filter = ElementParameterFilter(frule)
+		elem = FilteredElementCollector(doc).\
+			OfCategory(_bic).\
+			WhereElementIsElementType().\
+			WherePasses(filter).\
+			ToElements()
+	else:
+		fnrvStr = FilterStringEquals()
+		pvp = ParameterValueProvider(ElementId(int(_bip)))
+		frule = FilterStringRule(pvp, fnrvStr, _val, False)
+		filter = ElementParameterFilter(frule)
+		elem = FilteredElementCollector(doc).\
+			OfCategory(_bic).\
+			WhereElementIsNotElementType().\
+			WherePasses(filter).\
+			ToElements()
+	
+	return elem
 
 brdName = IN[0]
 reload = IN[1]
 
 #get mainBrd by name
-testParam = BuiltInParameter.RBS_ELEC_PANEL_NAME
-pvp = ParameterValueProvider(ElementId(int(testParam)))
-fnrvStr = FilterStringEquals()
-frule = FilterStringRule(pvp, fnrvStr, brdName, False)
-filter = ElementParameterFilter(frule)
-mainBrd = FilteredElementCollector(doc).\
-	OfCategory(BuiltInCategory.OST_ElectricalEquipment).\
-	WhereElementIsNotElementType().\
-	WherePasses(filter).\
-	FirstElement()
+mainBrd = getByCatAndStrParam(
+		BuiltInCategory.OST_ElectricalEquipment,
+		BuiltInParameter.RBS_ELEC_PANEL_NAME,
+		brdName, False)[0]
 
 #get connectedBrds
-testParam = BuiltInParameter.RBS_ELEC_PANEL_SUPPLY_FROM_PARAM
-pvp = ParameterValueProvider(ElementId(int(testParam)))
-fnrvStr = FilterStringEquals()
-frule = FilterStringRule(pvp, fnrvStr, brdName, False)
-filter = ElementParameterFilter(frule)
-connectedBrds = FilteredElementCollector(doc).\
-	OfCategory(BuiltInCategory.OST_ElectricalEquipment).\
-	WhereElementIsNotElementType().\
-	WherePasses(filter).\
-	ToElements()
+connectedBrds = getByCatAndStrParam(
+		BuiltInCategory.OST_ElectricalEquipment,
+		BuiltInParameter.RBS_ELEC_PANEL_SUPPLY_FROM_PARAM,
+		brdName, False)
+
 connectedBrds = sorted(connectedBrds, key=lambda brd:brd.Name)
 
 lowbrds = list()
@@ -96,31 +112,32 @@ pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages)]
 pageNameLst = [brdName] * pages
 
 #get TitleBlocks
-testParam = BuiltInParameter.SYMBOL_NAME_PARAM
-pvp = ParameterValueProvider(ElementId(int(testParam)))
-fnrvStr = FilterStringEquals()
-frule = FilterStringRule(pvp, fnrvStr, "WSP_Plankopf_Shema_Titelblatt", False)
-filter = ElementParameterFilter(frule)
-titleblatt = FilteredElementCollector(doc).\
-	OfCategory(BuiltInCategory.OST_TitleBlocks).\
-	WhereElementIsElementType().\
-	WherePasses(filter).\
-	FirstElement()
+titleblatt = getByCatAndStrParam(
+		BuiltInCategory.OST_TitleBlocks,
+		BuiltInParameter.SYMBOL_NAME_PARAM,
+		"WSP_Plankopf_Shema_Titelblatt", True)[0]
 
 #get schemaPlankopf
-testParam = BuiltInParameter.SYMBOL_NAME_PARAM
-pvp = ParameterValueProvider(ElementId(int(testParam)))
-fnrvStr = FilterStringEquals()
-frule = FilterStringRule(pvp, fnrvStr, "WSP_Plankopf_Shema", False)
-filter = ElementParameterFilter(frule)
-shemaPlankopf = FilteredElementCollector(doc).\
-	OfCategory(BuiltInCategory.OST_TitleBlocks).\
-	WhereElementIsElementType().\
-	WherePasses(filter).\
-	FirstElement()
+shemaPlankopf = getByCatAndStrParam(
+		BuiltInCategory.OST_TitleBlocks,
+		BuiltInParameter.SYMBOL_NAME_PARAM,
+		"WSP_Plankopf_Shema", True)[0]
+
+#========Find sheets
+existingSheets = [i for i in FilteredElementCollector(doc).
+			OfCategory(BuiltInCategory.OST_Sheets).
+			WhereElementIsNotElementType().
+			ToElements()
+			if i.LookupParameter("MC Panel Code"
+			).AsString() == brdName]
+
+#==============================
+TransactionManager.Instance.EnsureInTransaction(doc)
+
+
+map(lambda x:doc.Delete(x.Id), existingSheets)
 
 #========Create sheets
-TransactionManager.Instance.EnsureInTransaction(doc)
 sheetLst = list()
 sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
 
@@ -129,9 +146,10 @@ map(lambda x:sheetLst.append(ViewSheet.Create(doc, shemaPlankopf.Id)),
 
 map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
+
 TransactionManager.Instance.TransactionTaskDone()
 #==============================
 
 
-OUT = zip(sheetLst, pageNameLst, pageNumLst)
+OUT = sheetLst
 
