@@ -33,6 +33,14 @@ def getSystems (_brd):
 	else:
 		return list(allsys)
 
+def setPageParam(_lst):
+	global doc
+	page = _lst[0]
+	pName = _lst[1]
+	pNumber = _lst[2]
+	page.get_Parameter(BuiltInParameter.SHEET_NAME).Set(pName)
+	page.get_Parameter(BuiltInParameter.SHEET_NUMBER).Set(pNumber)
+
 brdName = IN[0]
 reload = IN[1]
 
@@ -80,9 +88,12 @@ allSystems = list()
 allSystems.append(mainSystems)
 map(lambda x: allSystems.append(x), lowSystems)
 
-pages = math.ceil((len(allSystems) + len(
+pages = int(math.ceil((len(allSystems) + len(
 		list(itertools.chain.from_iterable(
-		allSystems))))/8.0)
+		allSystems))))/8.0))+1
+
+pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages)]
+pageNameLst = [brdName] * pages
 
 #get TitleBlocks
 testParam = BuiltInParameter.SYMBOL_NAME_PARAM
@@ -96,6 +107,7 @@ titleblatt = FilteredElementCollector(doc).\
 	WherePasses(filter).\
 	FirstElement()
 
+#get schemaPlankopf
 testParam = BuiltInParameter.SYMBOL_NAME_PARAM
 pvp = ParameterValueProvider(ElementId(int(testParam)))
 fnrvStr = FilterStringEquals()
@@ -107,12 +119,19 @@ shemaPlankopf = FilteredElementCollector(doc).\
 	WherePasses(filter).\
 	FirstElement()
 
+#========Create sheets
 TransactionManager.Instance.EnsureInTransaction(doc)
+sheetLst = list()
+sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
 
-newSheet = ViewSheet.Create(doc, titleblatt.Id)
+map(lambda x:sheetLst.append(ViewSheet.Create(doc, shemaPlankopf.Id)),
+			range(pages-1))
+
+map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
 TransactionManager.Instance.TransactionTaskDone()
+#==============================
 
-#======================
-OUT = newSheet
-#======================
+
+OUT = zip(sheetLst, pageNameLst, pageNumLst)
+
