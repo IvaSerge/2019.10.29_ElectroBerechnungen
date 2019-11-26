@@ -160,11 +160,11 @@ class ElSys:
 
 		caseQF = [
 				"Beleuchtung",
-				"Beleuchtung; Sonstige"
+				"Beleuchtung; Sonstige",
+				"TEST"
 				]
 		caseQD = [
-				"Power",
-				"TEST"
+				"Power"
 				]
 
 		if loadClassStr in caseQF:

@@ -93,17 +93,18 @@ def getTypeByCatFamType (_bic, _fam, _type):
 
 class dia():
 	"""Diagramm class"""
-
-	
 	currentPage = 1
 	currentPos = 0
 	
-	def __init__(self, rvtSys, _brdIndex, _sysIndex):
+	def __init__(self, _rvtSys, _brdIndex, _sysIndex):
 		self.brdIndex = _brdIndex
 		self.sysIndex = _sysIndex
+		self.rvtSys = _rvtSys
 		self.location = None
-		self.schType = self.__getType__()
+		self.cbType = _rvtSys.LookupParameter("MC CB Type").AsString()
+		self.nPoles = _rvtSys.get_Parameter(BuiltInParameter.RBS_ELEC_NUMBER_OF_POLES).AsInteger()
 		
+		self.schType = self.__getType__()
 
 	def __getType__ (self):
 		global mainIsDisc
@@ -121,6 +122,15 @@ class dia():
 				schFamily = "E_SCH_Einspeisung-3P"
 				schType = "Schutzschalter"
 		
+		#mainBrd systems QF 1phase
+		elif all([brdi == 0, sysi > 0, self.cbType == "QF", self.nPoles == 1]):
+			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
+			schType = "Ausschalter"
+		
+		elif all([brdi == 0, sysi > 0, self.cbType == "QF", self.nPoles == 3]):
+			schFamily = "E_SCH_SICHERUNGSSCHALTER-3P"
+			schType = "Ausschalter"
+		
 		else:
 			schFamily = ""
 			schType = ""
@@ -131,15 +141,6 @@ class dia():
 				schType)
 		
 		return tp
-		
-		# try:
-			# return getByCatAndStrParam(
-					# BuiltInCategory.OST_GenericAnnotation,
-					# BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM,
-					# schFamilyType, True)[0]
-		# except:
-			# #raise NameError ('No 2d diagramm found')
-			# pass
 
 	# def __getLocation__ (self):
 		# #if == 0 it is "Einspeisung" 2 pos+indent
