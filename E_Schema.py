@@ -68,20 +68,84 @@ def getByCatAndStrParam (_bic, _bip, _val, _isType):
 	
 	return elem
 
+def getTypeByCatFamType (_bic, _fam, _type):
+	global doc
+	fnrvStr = FilterStringEquals()
+	
+	pvpType = ParameterValueProvider(ElementId(int(BuiltInParameter.SYMBOL_NAME_PARAM)))
+	pvpFam = ParameterValueProvider(ElementId(int(BuiltInParameter.ALL_MODEL_FAMILY_NAME)))
+	
+	fruleF = FilterStringRule(pvpFam, fnrvStr, _fam, False)
+	filterF = ElementParameterFilter(fruleF)
+	
+	fruleT = FilterStringRule(pvpType, fnrvStr, _type, False)
+	filterT = ElementParameterFilter(fruleT)
+	
+	filter = LogicalAndFilter(filterT, filterF)
+	
+	elem = FilteredElementCollector(doc).\
+	OfCategory(_bic).\
+	WhereElementIsElementType().\
+	WherePasses(filter).\
+	FirstElement()
+	
+	return elem
+
 class dia():
 	"""Diagramm class"""
-	zerroPoint = [0.0738188976375495,
-					0.66929133858268, 0]
+
+	
 	currentPage = 1
 	currentPos = 0
 	
-	def __init__(self, rvtSys):
+	def __init__(self, rvtSys, _brdIndex, _sysIndex):
+		self.brdIndex = _brdIndex
+		self.sysIndex = _sysIndex
 		self.location = None
-		self.location = None
-	
-	def __getLocation__ (self):
-		#if == 0 it is "Einspeisung" 2 pos+indent
-		self.location = None
+		self.schType = self.__getType__()
+		
+
+	def __getType__ (self):
+		global mainIsDisc
+		global doc
+		brdi = self.brdIndex
+		sysi = self.sysIndex
+		
+		#for "Einspeisung" if no disconnector in board
+		if all([brdi == 0, sysi == 0, mainIsDisc == 0]):
+			schFamily = "E_SCH_Einspeisung-3P"
+			schType = "Ausschalter"
+		
+		#for "Einspeisung" if disconnector in board
+		elif all([brdi == 0, sysi == 0, mainIsDisc > 0]):
+				schFamily = "E_SCH_Einspeisung-3P"
+				schType = "Schutzschalter"
+		
+		else:
+			schFamily = ""
+			schType = ""
+		
+		tp = getTypeByCatFamType(
+				BuiltInCategory.OST_GenericAnnotation,
+				schFamily,
+				schType)
+		
+		return tp
+		
+		# try:
+			# return getByCatAndStrParam(
+					# BuiltInCategory.OST_GenericAnnotation,
+					# BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM,
+					# schFamilyType, True)[0]
+		# except:
+			# #raise NameError ('No 2d diagramm found')
+			# pass
+
+	# def __getLocation__ (self):
+		# #if == 0 it is "Einspeisung" 2 pos+indent
+		# coordList = list()
+		# coordList.append()
+		# self.location = None
 
 brdName = IN[0]
 reload = IN[1]
@@ -91,6 +155,7 @@ mainBrd = getByCatAndStrParam(
 		BuiltInCategory.OST_ElectricalEquipment,
 		BuiltInParameter.RBS_ELEC_PANEL_NAME,
 		brdName, False)[0]
+mainIsDisc = mainBrd.LookupParameter("E_IsDisconnector").AsInteger()
 
 #get connectedBrds
 connectedBrds = getByCatAndStrParam(
@@ -119,51 +184,58 @@ allSystems = list()
 allSystems.append(mainSystems)
 map(lambda x: allSystems.append(x), lowSystems)
 
-pages = int(math.ceil((len(allSystems) + len(
-		list(itertools.chain.from_iterable(
-		allSystems))))/8.0))+1
+diaList = list()
+#========Initialaise dia class
+for i, sysLst in enumerate(allSystems):
+	for j, sys in enumerate (sysLst):
+		diaList.append(dia(sys, i, j))
 
-pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages)]
-pageNameLst = [brdName] * pages
+#diaList = 
 
-#get TitleBlocks
-titleblatt = getByCatAndStrParam(
-		BuiltInCategory.OST_TitleBlocks,
-		BuiltInParameter.SYMBOL_NAME_PARAM,
-		"WSP_Plankopf_Shema_Titelblatt", True)[0]
+# pages = int(math.ceil((len(allSystems) + len(
+		# list(itertools.chain.from_iterable(
+		# allSystems))))/8.0))+1
 
-#get schemaPlankopf
-shemaPlankopf = getByCatAndStrParam(
-		BuiltInCategory.OST_TitleBlocks,
-		BuiltInParameter.SYMBOL_NAME_PARAM,
-		"WSP_Plankopf_Shema", True)[0]
+# pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages)]
+# pageNameLst = [brdName] * pages
 
-#========Find sheets
-existingSheets = [i for i in FilteredElementCollector(doc).
-			OfCategory(BuiltInCategory.OST_Sheets).
-			WhereElementIsNotElementType().
-			ToElements()
-			if i.LookupParameter("MC Panel Code"
-			).AsString() == brdName]
+# #get TitleBlocks
+# titleblatt = getByCatAndStrParam(
+		# BuiltInCategory.OST_TitleBlocks,
+		# BuiltInParameter.SYMBOL_NAME_PARAM,
+		# "WSP_Plankopf_Shema_Titelblatt", True)[0]
 
-#==============================
-TransactionManager.Instance.EnsureInTransaction(doc)
+# #get schemaPlankopf
+# shemaPlankopf = getByCatAndStrParam(
+		# BuiltInCategory.OST_TitleBlocks,
+		# BuiltInParameter.SYMBOL_NAME_PARAM,
+		# "WSP_Plankopf_Shema", True)[0]
 
+# #========Find sheets
+# existingSheets = [i for i in FilteredElementCollector(doc).
+			# OfCategory(BuiltInCategory.OST_Sheets).
+			# WhereElementIsNotElementType().
+			# ToElements()
+			# if i.LookupParameter("MC Panel Code"
+			# ).AsString() == brdName]
 
-map(lambda x:doc.Delete(x.Id), existingSheets)
-
-#========Create sheets
-sheetLst = list()
-sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
-
-map(lambda x:sheetLst.append(ViewSheet.Create(doc, shemaPlankopf.Id)),
-			range(pages-1))
-map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
+# #=========Start transaction
+# TransactionManager.Instance.EnsureInTransaction(doc)
 
 
-TransactionManager.Instance.TransactionTaskDone()
-#==============================
+# map(lambda x:doc.Delete(x.Id), existingSheets)
+
+# #========Create sheets
+# sheetLst = list()
+# sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
+
+# map(lambda x:sheetLst.append(ViewSheet.Create(doc, shemaPlankopf.Id)),
+			# range(pages-1))
+# map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
 
-OUT = sheetLst
+# #=========End transaction
+# TransactionManager.Instance.TransactionTaskDone()
+
+OUT = map(lambda x: x.schType, diaList)
 
