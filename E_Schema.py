@@ -68,6 +68,21 @@ def getByCatAndStrParam (_bic, _bip, _val, _isType):
 	
 	return elem
 
+class dia():
+	"""Diagramm class"""
+	zerroPoint = [0.0738188976375495,
+					0.66929133858268, 0]
+	currentPage = 1
+	currentPos = 0
+	
+	def __init__(self, rvtSys):
+		self.location = None
+		self.location = None
+	
+	def __getLocation__ (self):
+		#if == 0 it is "Einspeisung" 2 pos+indent
+		self.location = None
+
 brdName = IN[0]
 reload = IN[1]
 
@@ -143,7 +158,6 @@ sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
 
 map(lambda x:sheetLst.append(ViewSheet.Create(doc, shemaPlankopf.Id)),
 			range(pages-1))
-
 map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
 
