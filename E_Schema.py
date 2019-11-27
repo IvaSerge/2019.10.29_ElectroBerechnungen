@@ -95,6 +95,7 @@ class dia():
 	"""Diagramm class"""
 	currentPage = 1
 	currentPos = 0
+	subBoardObj = None
 	
 	def __init__(self, _rvtSys, _brdIndex, _sysIndex):
 		self.brdIndex = _brdIndex
@@ -103,6 +104,8 @@ class dia():
 		self.location = None
 		self.cbType = _rvtSys.LookupParameter("MC CB Type").AsString()
 		self.nPoles = _rvtSys.get_Parameter(BuiltInParameter.RBS_ELEC_NUMBER_OF_POLES).AsInteger()
+		
+		
 		
 		self.schType = self.__getType__()
 
@@ -115,21 +118,57 @@ class dia():
 		#for "Einspeisung" if no disconnector in board
 		if all([brdi == 0, sysi == 0, mainIsDisc == 0]):
 			schFamily = "E_SCH_Einspeisung-3P"
-			schType = "Ausschalter"
+			schType = "Schutzschalter"
 		
 		#for "Einspeisung" if disconnector in board
 		elif all([brdi == 0, sysi == 0, mainIsDisc > 0]):
 				schFamily = "E_SCH_Einspeisung-3P"
-				schType = "Schutzschalter"
+				schType = "Ausschalter"
 		
 		#mainBrd systems QF 1phase
 		elif all([brdi == 0, sysi > 0, self.cbType == "QF", self.nPoles == 1]):
 			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
-			schType = "Ausschalter"
+			schType = "Schutzschalter"
 		
+		#mainBrd systems QF 3phase
 		elif all([brdi == 0, sysi > 0, self.cbType == "QF", self.nPoles == 3]):
 			schFamily = "E_SCH_SICHERUNGSSCHALTER-3P"
-			schType = "Ausschalter"
+			schType = "Schutzschalter"
+		
+		#2lvl main systems QF
+		elif all([brdi > 0, sysi == 0, self.cbType == "QF"]):
+			schFamily = "E_SCH_Einspeisung-3P_2lvl"
+			schType = "Schutzschalter"
+			dia.subBoardType = "QF"
+		
+		#2lvl main systems QF-FI
+		elif all([brdi > 0, sysi == 0, self.cbType == "QF-FI"]):
+			schFamily = "E_SCH_Einspeisung-3P_2lvl"
+			schType = "QF-FI_Schalter"
+			dia.subBoardType = "QF-FI"
+		
+		#2lvl systems QF 1phase QF in subboard
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF", self.nPoles == 1]):
+			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
+			schType = "Schutzschalter_Zusätzliche"
+
+		#2lvl systems QF 1phase QF-FI in subboard
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI", self.nPoles == 1]):
+			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
+			schType = "Schutzschalter_Zusätzliche_N"
+		
+		#2lvl systems QF-FI 1phase QF in subboard
+				#2lvl systems QF 1phase QF-FI in subboard
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF", self.nPoles == 1]):
+			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
+			schType = "Schutzschalter_Zusätzliche"
+		
+		
+		#2lvl systems QF-FI 1phase QF-FI in subboard
+		
+		
+		#2lvl systems QF-FI 1phase QF in subboard
+		
 		
 		else:
 			schFamily = ""
