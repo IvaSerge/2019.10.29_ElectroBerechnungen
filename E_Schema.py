@@ -105,8 +105,6 @@ class dia():
 		self.cbType = _rvtSys.LookupParameter("MC CB Type").AsString()
 		self.nPoles = _rvtSys.get_Parameter(BuiltInParameter.RBS_ELEC_NUMBER_OF_POLES).AsInteger()
 		
-		
-		
 		self.schType = self.__getType__()
 
 	def __getType__ (self):
@@ -148,27 +146,52 @@ class dia():
 			dia.subBoardType = "QF-FI"
 		
 		#2lvl systems QF 1phase QF in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF", self.nPoles == 1]):
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF", 
+				self.nPoles == 1, self.cbType == "QF"]):
 			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
 			schType = "Schutzschalter_Zusätzliche"
-
+		
 		#2lvl systems QF 1phase QF-FI in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI", self.nPoles == 1]):
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI", 
+						self.nPoles == 1, self.cbType == "QF"]):
 			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
 			schType = "Schutzschalter_Zusätzliche_N"
 		
-		#2lvl systems QF-FI 1phase QF in subboard
-				#2lvl systems QF 1phase QF-FI in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF", self.nPoles == 1]):
-			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
+		#2lvl systems QF 3phase QF in subboard
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF", 
+				self.nPoles == 3, self.cbType == "QF"]):
+			schFamily = "E_SCH_SICHERUNGSSCHALTER-3P"
 			schType = "Schutzschalter_Zusätzliche"
 		
+		#2lvl systems QF 3phase QF in subboard
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI", 
+				self.nPoles == 3, self.cbType == "QF"]):
+			schFamily = "E_SCH_SICHERUNGSSCHALTER-3P"
+			schType = "Schutzschalter_Zusätzliche_N"
+		
+		#2lvl systems QF-FI phase QF in subboard
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF",
+						self.nPoles == 1, self.cbType == "QF-FI"]):
+			schFamily = "E_SCH_QF-FI-SCHALTER-1P"
+			schType = "QF-FI_Zusätzliche"
 		
 		#2lvl systems QF-FI 1phase QF-FI in subboard
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI",
+						self.nPoles == 1, self.cbType == "QF-FI"]):
+			schFamily = "E_SCH_QF-FI-SCHALTER-1P"
+			schType = "QF-FI_Zusätzliche_N"
+
+		#2lvl systems QF-FI 3phase QF in subboard
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF",
+						self.nPoles == 3, self.cbType == "QF-FI"]):
+			schFamily = "E_SCH_QF-FI-SCHALTER-3P"
+			schType = "QF-FI_Zusätzliche"
 		
-		
-		#2lvl systems QF-FI 1phase QF in subboard
-		
+		#2lvl systems QF-FI 3phase QF-FI in subboard
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI",
+						self.nPoles == 3, self.cbType == "QF-FI"]):
+			schFamily = "E_SCH_QF-FI-SCHALTER-3P"
+			schType = "QF-FI_Zusätzliche_N"
 		
 		else:
 			schFamily = ""
