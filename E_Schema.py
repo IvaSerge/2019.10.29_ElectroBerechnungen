@@ -228,25 +228,30 @@ class dia():
 			dia.currentPage += 1
 			dia.currentPos = 0
 			self.location = dia.coordList[dia.currentPos]
-			dia.currentPos += 2
+			dia.currentPos += 3
 		
 		#next modules
-		if modulSize > 0:
-			#Is it enought space for next module on page
-			nextPos = dia.currentPos + modulSize
-			if nextPos < 8: #enought
-				self.location = dia.coordList[dia.currentPos]
-				dia.currentPos = nextPos
+		nextPos = dia.currentPos + modulSize
+		if nextPos <= 8 and modulSize > 0: #enought
+			self.location = dia.coordList[dia.currentPos]
+			dia.currentPos = nextPos
 
-			else:
-				dia.currentPage += 1
-				dia.currentPos = 1
-				self.location = dia.coordList[dia.currentPos]
-				dia.currentPos = modulSize
+		if nextPos > 8 and modulSize > 0:
+			dia.currentPage += 1
+			dia.currentPos = 1
+			self.location = dia.coordList[dia.currentPos]
+			dia.currentPos = modulSize
 		
 		#set page
 		self.pageN = dia.currentPage
 
+	def placeDiagramm (self):
+		global doc
+		global sheetLst
+		self.diaInst = doc.Create.NewFamilyInstance(
+					self.location, 
+					self.schType,
+					sheetLst[self.pageN])
 
 brdName = IN[0]
 reload = IN[1]
@@ -320,19 +325,22 @@ existingSheets = [i for i in FilteredElementCollector(doc).
 TransactionManager.Instance.EnsureInTransaction(doc)
 
 
-map(lambda x:doc.Delete(x.Id), existingSheets)
+# #map(lambda x:doc.Delete(x.Id), existingSheets)
 
-#========Create sheets
-sheetLst = list()
-sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
+# #========Create sheets
+sheetLst = existingSheets
 
-map(lambda x:sheetLst.append(ViewSheet.Create(doc, shemaPlankopf.Id)),
-			range(pages))
-map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
+# sheetLst = list()
+# sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
 
+# map(lambda x:sheetLst.append(ViewSheet.Create(doc, shemaPlankopf.Id)),
+			# range(pages))
+# map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
+
+map(lambda x: x.placeDiagramm(), diaList)
 
 #=========End transaction
 TransactionManager.Instance.TransactionTaskDone()
 
-#OUT = map(lambda x: [x.pageN, x.location], diaList)
-OUT = sheetLst
+OUT = map(lambda x: [x.location, x.rvtSys, x.schType], diaList)
+#OUT = sheetLst
