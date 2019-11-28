@@ -93,9 +93,23 @@ def getTypeByCatFamType (_bic, _fam, _type):
 
 class dia():
 	"""Diagramm class"""
-	currentPage = 1
+	currentPage = 0
 	currentPos = 0
 	subBoardObj = None
+	
+	#coordinates of points on scheet
+	coordList = list()
+	coordList.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
+	coordList.append(XYZ(0.113188976377707, 0.66929133858268, 0))
+	coordList.append(XYZ(0.204396325459072, 0.66929133858268, 0))
+	coordList.append(XYZ(0.295603674540437, 0.66929133858268, 0))
+	coordList.append(XYZ(0.386811023621802, 0.669291338582679, 0))
+	coordList.append(XYZ(0.478018372703167, 0.669291338582679, 0))
+	coordList.append(XYZ(0.569225721784533, 0.669291338582679, 0))
+	coordList.append(XYZ(0.660433070865899, 0.669291338582678, 0))
+	coordList.append(XYZ(0.751640419947264, 0.669291338582678, 0))
+	coordList.append(XYZ(0.84284776902863, 0.669291338582678, 0))
+
 	
 	def __init__(self, _rvtSys, _brdIndex, _sysIndex):
 		self.brdIndex = _brdIndex
@@ -104,8 +118,10 @@ class dia():
 		self.location = None
 		self.cbType = _rvtSys.LookupParameter("MC CB Type").AsString()
 		self.nPoles = _rvtSys.get_Parameter(BuiltInParameter.RBS_ELEC_NUMBER_OF_POLES).AsInteger()
+		self.pageN = None
 		
 		self.schType = self.__getType__()
+		self.__getLocation__()
 
 	def __getType__ (self):
 		global mainIsDisc
@@ -204,11 +220,33 @@ class dia():
 		
 		return tp
 
-	# def __getLocation__ (self):
-		# #if == 0 it is "Einspeisung" 2 pos+indent
-		# coordList = list()
-		# coordList.append()
-		# self.location = None
+	def __getLocation__ (self):
+		modulSize = self.schType.LookupParameter("E_PositionsHeld").AsInteger()
+		
+		#Zerro modul 
+		if modulSize == 0:
+			dia.currentPage += 1
+			dia.currentPos = 0
+			self.location = dia.coordList[dia.currentPos]
+			dia.currentPos += 2
+		
+		#next modules
+		if modulSize > 0:
+			#Is it enought space for next module on page
+			nextPos = dia.currentPos + modulSize
+			if nextPos < 8: #enought
+				self.location = dia.coordList[dia.currentPos]
+				dia.currentPos = nextPos
+
+			else:
+				dia.currentPage += 1
+				dia.currentPos = 1
+				self.location = dia.coordList[dia.currentPos]
+				dia.currentPos = modulSize
+		
+		#set page
+		self.pageN = dia.currentPage
+
 
 brdName = IN[0]
 reload = IN[1]
@@ -253,52 +291,48 @@ for i, sysLst in enumerate(allSystems):
 	for j, sys in enumerate (sysLst):
 		diaList.append(dia(sys, i, j))
 
-#diaList = 
+pages = max([x.pageN for x in diaList])
 
-# pages = int(math.ceil((len(allSystems) + len(
-		# list(itertools.chain.from_iterable(
-		# allSystems))))/8.0))+1
+pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages+1)]
+pageNameLst = [brdName] * (pages+1)
 
-# pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages)]
-# pageNameLst = [brdName] * pages
+#get TitleBlocks
+titleblatt = getByCatAndStrParam(
+		BuiltInCategory.OST_TitleBlocks,
+		BuiltInParameter.SYMBOL_NAME_PARAM,
+		"WSP_Plankopf_Shema_Titelblatt", True)[0]
 
-# #get TitleBlocks
-# titleblatt = getByCatAndStrParam(
-		# BuiltInCategory.OST_TitleBlocks,
-		# BuiltInParameter.SYMBOL_NAME_PARAM,
-		# "WSP_Plankopf_Shema_Titelblatt", True)[0]
+#get schemaPlankopf
+shemaPlankopf = getByCatAndStrParam(
+		BuiltInCategory.OST_TitleBlocks,
+		BuiltInParameter.SYMBOL_NAME_PARAM,
+		"WSP_Plankopf_Shema", True)[0]
 
-# #get schemaPlankopf
-# shemaPlankopf = getByCatAndStrParam(
-		# BuiltInCategory.OST_TitleBlocks,
-		# BuiltInParameter.SYMBOL_NAME_PARAM,
-		# "WSP_Plankopf_Shema", True)[0]
+#========Find sheets
+existingSheets = [i for i in FilteredElementCollector(doc).
+			OfCategory(BuiltInCategory.OST_Sheets).
+			WhereElementIsNotElementType().
+			ToElements()
+			if i.LookupParameter("MC Panel Code"
+			).AsString() == brdName]
 
-# #========Find sheets
-# existingSheets = [i for i in FilteredElementCollector(doc).
-			# OfCategory(BuiltInCategory.OST_Sheets).
-			# WhereElementIsNotElementType().
-			# ToElements()
-			# if i.LookupParameter("MC Panel Code"
-			# ).AsString() == brdName]
-
-# #=========Start transaction
-# TransactionManager.Instance.EnsureInTransaction(doc)
+#=========Start transaction
+TransactionManager.Instance.EnsureInTransaction(doc)
 
 
-# map(lambda x:doc.Delete(x.Id), existingSheets)
+map(lambda x:doc.Delete(x.Id), existingSheets)
 
-# #========Create sheets
-# sheetLst = list()
-# sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
+#========Create sheets
+sheetLst = list()
+sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
 
-# map(lambda x:sheetLst.append(ViewSheet.Create(doc, shemaPlankopf.Id)),
-			# range(pages-1))
-# map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
+map(lambda x:sheetLst.append(ViewSheet.Create(doc, shemaPlankopf.Id)),
+			range(pages))
+map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
 
-# #=========End transaction
-# TransactionManager.Instance.TransactionTaskDone()
+#=========End transaction
+TransactionManager.Instance.TransactionTaskDone()
 
-OUT = map(lambda x: x.schType, diaList)
-
+#OUT = map(lambda x: [x.pageN, x.location], diaList)
+OUT = sheetLst
