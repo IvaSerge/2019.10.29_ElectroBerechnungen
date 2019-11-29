@@ -68,6 +68,57 @@ def getByCatAndStrParam (_bic, _bip, _val, _isType):
 	
 	return elem
 
+def addFooter(_diaList):
+	global sheetLst
+	outlist = list()
+	schFamily = "E_SCH_Footer"
+	schType = ""
+	pages = max([x.pageN for x in _diaList]) + 1
+	
+	for i in range(1, pages):
+		onPage = [x for x in _diaList if x.pageN == i]
+		brd = onPage[0].brdIndex
+		brdSys = [x for x in _diaList
+				if x.brdIndex == brd
+				and x.sysIndex == 0][0]
+		cbType = brdSys.cbType
+		
+		#=====getType=====
+		#mainBrd systems QF 1phase
+		if brd == 0 and brdSys.sysIndex == 0:
+			schType = "Primärreifen"
+		
+		#2lvl systems QF
+		if brd > 0 and brdSys.cbType == "QF":
+			schType = "Zusätzliche"
+		
+		#2lvl systems FU+FI
+		if brd > 0 and "FI" in brdSys.cbType:
+			schType = "Zusätzliche_N"
+		
+		#=====getLocation=====
+		lastIndex = max([dia.coordList.index((x.location))
+							for x in _diaList
+							if x.pageN == i])
+		footIndex = lastIndex +1
+		locPnt = dia.coordList[footIndex]
+		
+		tp = getTypeByCatFamType(
+			BuiltInCategory.OST_GenericAnnotation,
+			schFamily,
+			schType)
+		
+		#=====create=====
+		diaInst = doc.Create.NewFamilyInstance(
+					locPnt, 
+					tp,
+					sheetLst[i])
+		
+		outlist.append(diaInst)
+		
+
+	return outlist
+
 def getTypeByCatFamType (_bic, _fam, _type):
 	global doc
 	fnrvStr = FilterStringEquals()
@@ -110,7 +161,6 @@ class dia():
 	coordList.append(XYZ(0.751640419947264, 0.669291338582678, 0))
 	coordList.append(XYZ(0.84284776902863, 0.669291338582678, 0))
 
-	
 	def __init__(self, _rvtSys, _brdIndex, _sysIndex):
 		self.brdIndex = _brdIndex
 		self.sysIndex = _sysIndex
@@ -253,6 +303,7 @@ class dia():
 					self.schType,
 					sheetLst[self.pageN])
 
+
 brdName = IN[0]
 reload = IN[1]
 
@@ -321,6 +372,8 @@ existingSheets = [i for i in FilteredElementCollector(doc).
 			if i.LookupParameter("MC Panel Code"
 			).AsString() == brdName]
 
+
+
 #=========Start transaction
 TransactionManager.Instance.EnsureInTransaction(doc)
 
@@ -338,9 +391,10 @@ sheetLst = existingSheets
 # map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
 map(lambda x: x.placeDiagramm(), diaList)
+footers = addFooter(diaList)
 
 #=========End transaction
 TransactionManager.Instance.TransactionTaskDone()
 
-OUT = map(lambda x: [x.location, x.rvtSys, x.schType], diaList)
-#OUT = sheetLst
+#OUT = map(lambda x: [x.location, x.pageN], diaList)
+OUT = footers
