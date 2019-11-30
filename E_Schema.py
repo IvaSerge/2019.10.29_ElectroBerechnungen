@@ -115,8 +115,32 @@ def addFooter(_diaList):
 					sheetLst[i])
 		
 		outlist.append(diaInst)
-		
+	return outlist
 
+def addFiller(_diaList):
+	global sheetLst
+	outlist = list()
+	schFamily = "E_SCH_Filler"
+	schType = "Filler"
+	tp = getTypeByCatFamType(
+			BuiltInCategory.OST_GenericAnnotation,
+			schFamily,
+			schType)
+	
+	pages = max([x.pageN for x in _diaList]) + 1
+	for i in range(1, pages):
+		onPage = [x for x in _diaList if x.pageN == i]
+		fillIndex = max([dia.coordList.index((x.location))
+							for x in _diaList
+							if x.pageN == i]) + 1
+		while fillIndex <= 9:
+			locPnt = dia.coordList[fillIndex]
+			diaInst = doc.Create.NewFamilyInstance(
+					locPnt, 
+					tp,
+					sheetLst[i])
+			fillIndex += 1
+			outlist.append(diaInst)
 	return outlist
 
 def getTypeByCatFamType (_bic, _fam, _type):
@@ -392,9 +416,10 @@ sheetLst = existingSheets
 
 map(lambda x: x.placeDiagramm(), diaList)
 footers = addFooter(diaList)
+fillers = addFiller(diaList)
 
 #=========End transaction
 TransactionManager.Instance.TransactionTaskDone()
 
 #OUT = map(lambda x: [x.location, x.pageN], diaList)
-OUT = footers
+OUT = fillers
