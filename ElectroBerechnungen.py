@@ -145,7 +145,7 @@ class ElSys:
 		освещение 1ф - QF (автомат)
 		ОВК 1ф - QF (автомат)
 		системы управления 1ф - К (контактор)
-		всё остальное - QD (дифавтомат)
+		всё остальное - QF-FI (дифавтомат)
 		
 		Если имя системы равно имени щита, то это
 		питающая система щита - QS
@@ -163,7 +163,7 @@ class ElSys:
 				"Beleuchtung; Sonstige",
 				"TEST"
 				]
-		caseQD = [
+		caseQFFI = [
 				"Power"
 				]
 
@@ -171,8 +171,8 @@ class ElSys:
 			calcSystem.LookupParameter("MC CB Type").Set("QF")
 			calcSystem.LookupParameter("MC Has RCD").Set(False)
 
-		elif loadClassStr in caseQD:
-			calcSystem.LookupParameter("MC CB Type").Set("QD")
+		elif loadClassStr in caseQFFI:
+			calcSystem.LookupParameter("MC CB Type").Set("QF-FI")
 			calcSystem.LookupParameter("MC Has RCD").Set(True)
 
 		else:
@@ -188,6 +188,7 @@ class ElSys:
 			boardsInSys = [i.Category.Id for i in elems
 				if i.Category.Id == brdCat]
 		if boardsInSys:
+			
 			calcSystem.LookupParameter("MC CB Type").Set("QF")
 			calcSystem.LookupParameter("MC Has RCD").Set(False)
 		doc.Regenerate()
