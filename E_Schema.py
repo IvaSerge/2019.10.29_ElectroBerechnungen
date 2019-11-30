@@ -9,6 +9,7 @@ sys.path.append(pyt_path)
 
 import System
 from System import Array
+from System.Collections.Generic import *
 
 import itertools
 import math
@@ -329,7 +330,8 @@ class dia():
 
 
 brdName = IN[0]
-reload = IN[1]
+createNewScheets = IN[1]
+reload = IN[2]
 
 #get mainBrd by name
 mainBrd = getByCatAndStrParam(
@@ -396,23 +398,30 @@ existingSheets = [i for i in FilteredElementCollector(doc).
 			if i.LookupParameter("MC Panel Code"
 			).AsString() == brdName]
 
-
-
 #=========Start transaction
 TransactionManager.Instance.EnsureInTransaction(doc)
 
+#========Create sheets========
+sheetLst = list()
+if createNewScheets == False:
+	sheetLst = existingSheets
+	elemsOnSheet = list()
+	#remove all instances on sheet
+	for sheet in sheetLst:
+		elems = FilteredElementCollector(doc
+				).OwnedByView(sheet.Id
+				).OfCategory(BuiltInCategory.OST_GenericAnnotation
+				).WhereElementIsNotElementType().ToElementIds()
+		map(lambda x: elemsOnSheet.append(x), elems)
+	typed_list = List[ElementId](elemsOnSheet)
+	doc.Delete(typed_list)
 
-# #map(lambda x:doc.Delete(x.Id), existingSheets)
-
-# #========Create sheets
-sheetLst = existingSheets
-
-# sheetLst = list()
-# sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
-
-# map(lambda x:sheetLst.append(ViewSheet.Create(doc, shemaPlankopf.Id)),
-			# range(pages))
-# map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
+if createNewScheets == True:
+	map(lambda x:doc.Delete(x.Id), existingSheets)
+	sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
+	map(lambda x:sheetLst.append(ViewSheet.Create(
+				doc, shemaPlankopf.Id)), range(pages))
+	map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
 map(lambda x: x.placeDiagramm(), diaList)
 footers = addFooter(diaList)
@@ -422,4 +431,4 @@ fillers = addFiller(diaList)
 TransactionManager.Instance.TransactionTaskDone()
 
 #OUT = map(lambda x: [x.location, x.pageN], diaList)
-OUT = fillers
+#OUT = elemsOnSheet
