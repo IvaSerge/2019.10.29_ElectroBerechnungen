@@ -20,6 +20,27 @@ from RevitServices.Persistence import DocumentManager
 from RevitServices.Transactions import TransactionManager
 doc = DocumentManager.Instance.CurrentDBDocument
 
+def GetBuiltInParam(paramName):
+	builtInParams = System.Enum.GetValues(BuiltInParameter)
+	param = []
+	
+	for i in builtInParams:
+		if i.ToString() == paramName:
+			param.append(i)
+			break
+		else:
+			continue
+	return param[0]
+
+def SetupParVal(elem, name, pValue):
+	global doc
+	try:
+		elem.LookupParameter(name).Set(pValue)
+	except:
+		bip = GetBuiltInParam(name)
+		elem.get_Parameter(bip).Set(pValue)
+	return elem
+
 def getSystems (_brd):
 	allsys = _brd.MEPModel.ElectricalSystems
 	lowsys = _brd.MEPModel.AssignedElectricalSystems
@@ -194,9 +215,12 @@ class dia():
 		self.cbType = _rvtSys.LookupParameter("MC CB Type").AsString()
 		self.nPoles = _rvtSys.get_Parameter(BuiltInParameter.RBS_ELEC_NUMBER_OF_POLES).AsInteger()
 		self.pageN = None
+		self.diaInst = None
+		self.paramLst = list()
 		
 		self.schType = self.__getType__()
 		self.__getLocation__()
+		self.__getParameters__()
 
 	def __getType__ (self):
 		global mainIsDisc
@@ -307,15 +331,15 @@ class dia():
 		
 		#next modules
 		nextPos = dia.currentPos + modulSize
-		if nextPos <= 8 and modulSize > 0: #enought
+		if nextPos <= 9 and modulSize > 0: #enought
 			self.location = dia.coordList[dia.currentPos]
 			dia.currentPos = nextPos
 
-		if nextPos > 8 and modulSize > 0:
+		if nextPos > 9 and modulSize > 0:
 			dia.currentPage += 1
 			dia.currentPos = 1
 			self.location = dia.coordList[dia.currentPos]
-			dia.currentPos = modulSize
+			dia.currentPos = 1 + modulSize
 		
 		#set page
 		self.pageN = dia.currentPage
@@ -328,6 +352,35 @@ class dia():
 					self.schType,
 					sheetLst[self.pageN])
 
+	def __getParameters__ (self):
+		outlist = list()
+		#read info from board
+		if self.sysIndex == 0:
+			brd = [x for x in self.rvtSys.Elements][0]
+			frmSize = brd.LookupParameter("MC Frame Size").AsDouble()
+			isD = brd.LookupParameter("E_IsDisconnector").AsInteger()
+			if isD == 0:
+				cbType = "QF"
+			else:
+				cbType = "QS"
+
+		#read info from system
+		if self.sysIndex > 0:
+			frmSize = self.rvtSys.LookupParameter("MC Frame Size").AsDouble()
+			cbType = self.rvtSys.LookupParameter("MC CB Type").AsString()
+		cab = self.rvtSys.LookupParameter("E_CableType").AsString()
+		
+		outlist.append(["MC Frame Size", frmSize])
+		outlist.append(["E_CableType", cab])
+		outlist.append(["MC CB Type", cbType])
+		map(lambda x: self.paramLst.append(x), outlist)
+
+	def setParameters (self):
+		for i in self.paramLst:
+			elem = self.diaInst
+			pName = i[0]
+			pValue = i[1]
+			SetupParVal (elem, pName, pValue)
 
 brdName = IN[0]
 createNewScheets = IN[1]
@@ -426,9 +479,11 @@ if createNewScheets == True:
 map(lambda x: x.placeDiagramm(), diaList)
 footers = addFooter(diaList)
 fillers = addFiller(diaList)
+map(lambda x: x.setParameters(), diaList)
 
 #=========End transaction
 TransactionManager.Instance.TransactionTaskDone()
 
-#OUT = map(lambda x: [x.location, x.pageN], diaList)
+#OUT = map(lambda x: [dia.coordList.index(x.location), x.pageN], diaList)
+OUT = map(lambda x: x.diaInst, diaList)
 #OUT = elemsOnSheet
