@@ -218,7 +218,11 @@ class dia():
 		self.diaInst = None
 		self.paramLst = list()
 		
-		self.schType = self.__getType__()
+		try:
+			self.schType = self.__getType__()
+		except:
+			raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
+		
 		self.__getLocation__()
 		self.__getParameters__()
 
@@ -373,11 +377,14 @@ class dia():
 		if self.sysIndex > 0:
 			frmSize = self.rvtSys.LookupParameter("MC Frame Size").AsDouble()
 			cbType = self.rvtSys.LookupParameter("MC CB Type").AsString()
+		
+		cName = self.rvtSys.get_Parameter(BuiltInParameter.RBS_ELEC_CIRCUIT_NAME).AsString()
 		cab = self.rvtSys.LookupParameter("E_CableType").AsString()
 		
 		outlist.append(["MC Frame Size", frmSize])
 		outlist.append(["E_CableType", cab])
 		outlist.append(["MC CB Type", cbType])
+		outlist.append(["RBS_ELEC_CIRCUIT_NAME", cName])
 		map(lambda x: self.paramLst.append(x), outlist)
 
 	def setParameters (self):
@@ -490,5 +497,5 @@ map(lambda x: x.setParameters(), diaList)
 TransactionManager.Instance.TransactionTaskDone()
 
 #OUT = map(lambda x: [dia.coordList.index(x.location), x.pageN], diaList)
-#OUT = map(lambda x: x.diaInst, diaList)
+OUT = map(lambda x: x.paramLst, diaList)
 #OUT = mainIsDisc
