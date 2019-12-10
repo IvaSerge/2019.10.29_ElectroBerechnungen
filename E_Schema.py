@@ -243,6 +243,11 @@ class dia():
 			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
 			schType = "Schutzschalter"
 		
+		#mainBrd systems QF-FI 1phase
+		elif all([brdi == 0, sysi > 0, self.cbType == "QF-FI", self.nPoles == 1]):
+			schFamily = "E_SCH_QF-FI-SCHALTER-1P"
+			schType = "QF-FI"
+		
 		#mainBrd systems QF 3phase
 		elif all([brdi == 0, sysi > 0, self.cbType == "QF", self.nPoles == 3]):
 			schFamily = "E_SCH_SICHERUNGSSCHALTER-3P"
@@ -485,5 +490,5 @@ map(lambda x: x.setParameters(), diaList)
 TransactionManager.Instance.TransactionTaskDone()
 
 #OUT = map(lambda x: [dia.coordList.index(x.location), x.pageN], diaList)
-OUT = map(lambda x: x.diaInst, diaList)
-#OUT = elemsOnSheet
+#OUT = map(lambda x: x.diaInst, diaList)
+#OUT = mainIsDisc
