@@ -407,9 +407,9 @@ mainIsDisc = mainBrd.LookupParameter("E_IsDisconnector").AsInteger()
 
 #get connectedBrds
 connectedBrds = getByCatAndStrParam(
-		BuiltInCategory.OST_ElectricalEquipment,
-		BuiltInParameter.RBS_ELEC_PANEL_SUPPLY_FROM_PARAM,
-		brdName, False)
+ 		BuiltInCategory.OST_ElectricalEquipment,
+ 		BuiltInParameter.RBS_ELEC_PANEL_SUPPLY_FROM_PARAM,
+ 		brdName, False)
 
 connectedBrds = sorted(connectedBrds, key=lambda brd:brd.Name)
 
@@ -417,8 +417,8 @@ lowbrds = list()
 map(lambda x: lowbrds.append(x), connectedBrds)
 
 lowbrds = [i for i in lowbrds if 
-			i.LookupParameter(
-			"MC Panel Code").AsString() == brdName]
+ 			i.LookupParameter(
+ 			"MC Panel Code").AsString() == brdName]
 
 #get systems
 lowSystems = map(lambda x: getSystems(x), lowbrds)
@@ -426,7 +426,7 @@ lowSystemsId = list(itertools.chain.from_iterable(lowSystems))
 lowSystemsId = [i.Id for i in lowSystemsId]
 
 mainSystems = [i for i in getSystems(mainBrd)
-				if i.Id not in lowSystemsId]
+ 				if i.Id not in lowSystemsId]
 
 allSystems = list()
 allSystems.append(mainSystems)
@@ -438,64 +438,64 @@ for i, sysLst in enumerate(allSystems):
 	for j, sys in enumerate (sysLst):
 		diaList.append(dia(sys, i, j))
 
-pages = max([x.pageN for x in diaList])
+# pages = max([x.pageN for x in diaList])
 
-pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages+1)]
-pageNameLst = [brdName] * (pages+1)
+# pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages+1)]
+# pageNameLst = [brdName] * (pages+1)
 
-#get TitleBlocks
-titleblatt = getByCatAndStrParam(
-		BuiltInCategory.OST_TitleBlocks,
-		BuiltInParameter.SYMBOL_NAME_PARAM,
-		"WSP_Plankopf_Shema_Titelblatt", True)[0]
+# #get TitleBlocks
+# titleblatt = getByCatAndStrParam(
+# 		BuiltInCategory.OST_TitleBlocks,
+# 		BuiltInParameter.SYMBOL_NAME_PARAM,
+# 		"WSP_Plankopf_Shema_Titelblatt", True)[0]
 
-#get schemaPlankopf
-shemaPlankopf = getByCatAndStrParam(
-		BuiltInCategory.OST_TitleBlocks,
-		BuiltInParameter.SYMBOL_NAME_PARAM,
-		"WSP_Plankopf_Shema", True)[0]
+# #get schemaPlankopf
+# shemaPlankopf = getByCatAndStrParam(
+# 		BuiltInCategory.OST_TitleBlocks,
+# 		BuiltInParameter.SYMBOL_NAME_PARAM,
+# 		"WSP_Plankopf_Shema", True)[0]
 
-#========Find sheets
-existingSheets = [i for i in FilteredElementCollector(doc).
-			OfCategory(BuiltInCategory.OST_Sheets).
-			WhereElementIsNotElementType().
-			ToElements()
-			if i.LookupParameter("MC Panel Code"
-			).AsString() == brdName]
+# #========Find sheets
+# existingSheets = [i for i in FilteredElementCollector(doc).
+# 			OfCategory(BuiltInCategory.OST_Sheets).
+# 			WhereElementIsNotElementType().
+# 			ToElements()
+# 			if i.LookupParameter("MC Panel Code"
+# 			).AsString() == brdName]
 
-#=========Start transaction
-TransactionManager.Instance.EnsureInTransaction(doc)
+# #=========Start transaction
+# TransactionManager.Instance.EnsureInTransaction(doc)
 
-#========Create sheets========
-sheetLst = list()
-if createNewScheets == False:
-	sheetLst = existingSheets
-	elemsOnSheet = list()
-	#remove all instances on sheet
-	for sheet in sheetLst:
-		elems = FilteredElementCollector(doc
-				).OwnedByView(sheet.Id
-				).OfCategory(BuiltInCategory.OST_GenericAnnotation
-				).WhereElementIsNotElementType().ToElementIds()
-		map(lambda x: elemsOnSheet.append(x), elems)
-	typed_list = List[ElementId](elemsOnSheet)
-	doc.Delete(typed_list)
+# #========Create sheets========
+# sheetLst = list()
+# if createNewScheets == False:
+# 	sheetLst = existingSheets
+# 	elemsOnSheet = list()
+# 	#remove all instances on sheet
+# 	for sheet in sheetLst:
+# 		elems = FilteredElementCollector(doc
+# 				).OwnedByView(sheet.Id
+# 				).OfCategory(BuiltInCategory.OST_GenericAnnotation
+# 				).WhereElementIsNotElementType().ToElementIds()
+# 		map(lambda x: elemsOnSheet.append(x), elems)
+# 	typed_list = List[ElementId](elemsOnSheet)
+# 	doc.Delete(typed_list)
 
-if createNewScheets == True:
-	map(lambda x:doc.Delete(x.Id), existingSheets)
-	sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
-	map(lambda x:sheetLst.append(ViewSheet.Create(
-				doc, shemaPlankopf.Id)), range(pages))
-	map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
+# if createNewScheets == True:
+# 	map(lambda x:doc.Delete(x.Id), existingSheets)
+# 	sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
+# 	map(lambda x:sheetLst.append(ViewSheet.Create(
+# 				doc, shemaPlankopf.Id)), range(pages))
+# 	map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
-map(lambda x: x.placeDiagramm(), diaList)
-footers = addFooter(diaList)
-fillers = addFiller(diaList)
-map(lambda x: x.setParameters(), diaList)
+# map(lambda x: x.placeDiagramm(), diaList)
+# footers = addFooter(diaList)
+# fillers = addFiller(diaList)
+# map(lambda x: x.setParameters(), diaList)
 
-#=========End transaction
-TransactionManager.Instance.TransactionTaskDone()
+# #=========End transaction
+# TransactionManager.Instance.TransactionTaskDone()
 
 #OUT = map(lambda x: [dia.coordList.index(x.location), x.pageN], diaList)
-OUT = map(lambda x: x.paramLst, diaList)
-#OUT = mainIsDisc
+#OUT = map(lambda x: x.paramLst, diaList)
+OUT = allSystems
