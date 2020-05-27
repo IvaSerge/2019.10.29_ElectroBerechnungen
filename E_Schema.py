@@ -258,12 +258,11 @@ class dia():
 		sysi = self.sysIndex
 		modulSize = self.schType.LookupParameter("E_PositionsHeld").AsInteger()
 		
-		#Zerro modul 
-	 	if all([brdi == 0, sysi == 0]):
+		#Start modul 
+	 	if 	sysi == 0:
 	 		dia.currentPage += 1
 	 		dia.currentPos = 1
 	 		self.location = dia.coordList[dia.currentPos]
-			dia.currentPos += 1 + modulSize
 		
 	 	#next modules
 	 	nextPos = dia.currentPos + modulSize
@@ -280,13 +279,13 @@ class dia():
 	 	#set page
 	 	self.pageN = dia.currentPage
 
-	# def placeDiagramm (self):
-	# 	global doc
-	# 	global sheetLst
-	# 	self.diaInst = doc.Create.NewFamilyInstance(
-	# 				self.location, 
-	# 				self.schType,
-	# 				sheetLst[self.pageN])
+	def placeDiagramm (self):
+		global doc
+		global sheetLst
+		self.diaInst = doc.Create.NewFamilyInstance(
+					self.location, 
+					self.schType,
+					sheetLst[self.pageN])
 
 	# def __getParameters__ (self):
 	# 	outlist = list()
@@ -375,52 +374,52 @@ pages = max([x.pageN for x in diaList])
 pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages+1)]
 pageNameLst = [brdName] * (pages+1)
 
-# #get TitleBlocks
-# titleblatt = getByCatAndStrParam(
-# 		BuiltInCategory.OST_TitleBlocks,
-# 		BuiltInParameter.SYMBOL_NAME_PARAM,
-# 		"WSP_Plankopf_Shema_Titelblatt", True)[0]
+#get TitleBlocks
+titleblatt = getByCatAndStrParam(
+ 		BuiltInCategory.OST_TitleBlocks,
+ 		BuiltInParameter.SYMBOL_NAME_PARAM,
+ 		"WSP_Plankopf_Shema_Titelblatt", True)[0]
 
-# #get schemaPlankopf
-# shemaPlankopf = getByCatAndStrParam(
-# 		BuiltInCategory.OST_TitleBlocks,
-# 		BuiltInParameter.SYMBOL_NAME_PARAM,
-# 		"WSP_Plankopf_Shema", True)[0]
+#get schemaPlankopf
+shemaPlankopf = getByCatAndStrParam(
+		BuiltInCategory.OST_TitleBlocks,
+		BuiltInParameter.SYMBOL_NAME_PARAM,
+		"WSP_Plankopf_Shema", True)[0]
 
 # #========Find sheets
-# existingSheets = [i for i in FilteredElementCollector(doc).
-# 			OfCategory(BuiltInCategory.OST_Sheets).
-# 			WhereElementIsNotElementType().
-# 			ToElements()
-# 			if i.LookupParameter("MC Panel Code"
-# 			).AsString() == brdName]
+existingSheets = [i for i in FilteredElementCollector(doc).
+			OfCategory(BuiltInCategory.OST_Sheets).
+			WhereElementIsNotElementType().
+			ToElements()
+			if i.LookupParameter("MC Panel Code"
+			).AsString() == brdName]
 
-# #=========Start transaction
-# TransactionManager.Instance.EnsureInTransaction(doc)
+#=========Start transaction
+TransactionManager.Instance.EnsureInTransaction(doc)
 
 # #========Create sheets========
-# sheetLst = list()
-# if createNewScheets == False:
-# 	sheetLst = existingSheets
-# 	elemsOnSheet = list()
-# 	#remove all instances on sheet
-# 	for sheet in sheetLst:
-# 		elems = FilteredElementCollector(doc
-# 				).OwnedByView(sheet.Id
-# 				).OfCategory(BuiltInCategory.OST_GenericAnnotation
-# 				).WhereElementIsNotElementType().ToElementIds()
-# 		map(lambda x: elemsOnSheet.append(x), elems)
-# 	typed_list = List[ElementId](elemsOnSheet)
-# 	doc.Delete(typed_list)
+sheetLst = list()
+if createNewScheets == False:
+	sheetLst = existingSheets
+	elemsOnSheet = list()
+	#remove all instances on sheet
+	for sheet in sheetLst:
+		elems = FilteredElementCollector(doc
+				).OwnedByView(sheet.Id
+				).OfCategory(BuiltInCategory.OST_GenericAnnotation
+				).WhereElementIsNotElementType().ToElementIds()
+		map(lambda x: elemsOnSheet.append(x), elems)
+	typed_list = List[ElementId](elemsOnSheet)
+	doc.Delete(typed_list)
 
-# if createNewScheets == True:
-# 	map(lambda x:doc.Delete(x.Id), existingSheets)
-# 	sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
-# 	map(lambda x:sheetLst.append(ViewSheet.Create(
-# 				doc, shemaPlankopf.Id)), range(pages))
-# 	map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
+if createNewScheets == True:
+	map(lambda x:doc.Delete(x.Id), existingSheets)
+	sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
+	map(lambda x:sheetLst.append(ViewSheet.Create(
+				doc, shemaPlankopf.Id)), range(pages))
+	map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
-# map(lambda x: x.placeDiagramm(), diaList)
+map(lambda x: x.placeDiagramm(), diaList)
 # footers = addFooter(diaList)
 # fillers = addFiller(diaList)
 # map(lambda x: x.setParameters(), diaList)
