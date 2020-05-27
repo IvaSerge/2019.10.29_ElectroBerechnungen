@@ -226,7 +226,7 @@ class dia():
 		except:
 			raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
 		
-		# self.__getLocation__()
+		self.__getLocation__()
 		# self.__getParameters__()
 
 	def __getType__ (self):
@@ -254,29 +254,31 @@ class dia():
 		return tp
 
 	def __getLocation__ (self):
+		brdi = self.brdIndex
+		sysi = self.sysIndex
 		modulSize = self.schType.LookupParameter("E_PositionsHeld").AsInteger()
 		
-	# 	#Zerro modul 
-	# 	if modulSize == 0:
-	# 		dia.currentPage += 1
-	# 		dia.currentPos = 0
-	# 		self.location = dia.coordList[dia.currentPos]
-	# 		dia.currentPos += 3
+		#Zerro modul 
+	 	if all([brdi == 0, sysi == 0]):
+	 		dia.currentPage += 1
+	 		dia.currentPos = 1
+	 		self.location = dia.coordList[dia.currentPos]
+			dia.currentPos += 1 + modulSize
 		
-	# 	#next modules
-	# 	nextPos = dia.currentPos + modulSize
-	# 	if nextPos <= 9 and modulSize > 0: #enought
-	# 		self.location = dia.coordList[dia.currentPos]
-	# 		dia.currentPos = nextPos
+	 	#next modules
+	 	nextPos = dia.currentPos + modulSize
+	 	if nextPos <= 9:  #enought space for next element
+	 		self.location = dia.coordList[dia.currentPos]
+			dia.currentPos = nextPos
 
-	# 	if nextPos > 9 and modulSize > 0:
-	# 		dia.currentPage += 1
-	# 		dia.currentPos = 1
-	# 		self.location = dia.coordList[dia.currentPos]
-	# 		dia.currentPos = 1 + modulSize
+	 	if nextPos > 9:
+	 		dia.currentPage += 1
+	 		dia.currentPos = 1
+	 		self.location = dia.coordList[dia.currentPos]
+	 		dia.currentPos = 1 + modulSize
 		
-	# 	#set page
-	# 	self.pageN = dia.currentPage
+	 	#set page
+	 	self.pageN = dia.currentPage
 
 	# def placeDiagramm (self):
 	# 	global doc
@@ -368,10 +370,10 @@ for i, sysLst in enumerate(allSystems):
 	for j, sys in enumerate (sysLst):
 		diaList.append(dia(sys, i, j))
 
-# pages = max([x.pageN for x in diaList])
+pages = max([x.pageN for x in diaList])
 
-# pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages+1)]
-# pageNameLst = [brdName] * (pages+1)
+pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages+1)]
+pageNameLst = [brdName] * (pages+1)
 
 # #get TitleBlocks
 # titleblatt = getByCatAndStrParam(
@@ -429,5 +431,5 @@ for i, sysLst in enumerate(allSystems):
 
 #OUT = map(lambda x: [dia.coordList.index(x.location), x.pageN], diaList)
 #OUT = map(lambda x: x.paramLst, diaList)
-OUT = [x.schType for x in diaList]
+OUT = pageNameLst
 #OUT = mainBrd.LookupParameter("E_Sch_Family").AsString()
