@@ -20,6 +20,8 @@ from RevitServices.Persistence import DocumentManager
 from RevitServices.Transactions import TransactionManager
 doc = DocumentManager.Instance.CurrentDBDocument
 
+#region
+
 def GetBuiltInParam(paramName):
 	builtInParams = System.Enum.GetValues(BuiltInParameter)
 	param = []
@@ -187,6 +189,7 @@ def getTypeByCatFamType (_bic, _fam, _type):
 	FirstElement()
 	
 	return elem
+#endregion
 
 class dia():
 	"""Diagramm class"""
@@ -223,176 +226,98 @@ class dia():
 		except:
 			raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
 		
-		self.__getLocation__()
-		self.__getParameters__()
+		# self.__getLocation__()
+		# self.__getParameters__()
 
 	def __getType__ (self):
-		global mainIsDisc
+		global mainBrd
 		global doc
 		brdi = self.brdIndex
 		sysi = self.sysIndex
 		
-		#for "Einspeisung" if no disconnector in board
-		if all([brdi == 0, sysi == 0, mainIsDisc == 0]):
-			schFamily = "E_SCH_Einspeisung-3P"
-			schType = "Schutzschalter"
-		
-		#for "Einspeisung" if disconnector in board
-		elif all([brdi == 0, sysi == 0, mainIsDisc > 0]):
-				schFamily = "E_SCH_Einspeisung-3P"
-				schType = "Ausschalter"
-		
-		#mainBrd systems QF 1phase
-		elif all([brdi == 0, sysi > 0, self.cbType == "QF", self.nPoles == 1]):
-			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
-			schType = "Schutzschalter"
-		
-		#mainBrd systems QF-FI 1phase
-		elif all([brdi == 0, sysi > 0, self.cbType == "QF-FI", self.nPoles == 1]):
-			schFamily = "E_SCH_QF-FI-SCHALTER-1P"
-			schType = "QF-FI"
-		
-		#mainBrd systems QF 3phase
-		elif all([brdi == 0, sysi > 0, self.cbType == "QF", self.nPoles == 3]):
-			schFamily = "E_SCH_SICHERUNGSSCHALTER-3P"
-			schType = "Schutzschalter"
-		
-		#2lvl main systems QF
-		elif all([brdi > 0, sysi == 0, self.cbType == "QF"]):
-			schFamily = "E_SCH_Einspeisung-3P_2lvl"
-			schType = "Schutzschalter"
-			dia.subBoardType = "QF"
-		
-		#2lvl main systems QF-FI
-		elif all([brdi > 0, sysi == 0, self.cbType == "QF-FI"]):
-			schFamily = "E_SCH_Einspeisung-3P_2lvl"
-			schType = "QF-FI_Schalter"
-			dia.subBoardType = "QF-FI"
-		
-		#2lvl systems QF 1phase QF in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF", 
-				self.nPoles == 1, self.cbType == "QF"]):
-			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
-			schType = "Schutzschalter_Zusätzliche"
-		
-		#2lvl systems QF 1phase QF-FI in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI", 
-						self.nPoles == 1, self.cbType == "QF"]):
-			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
-			schType = "Schutzschalter_Zusätzliche_N"
-		
-		#2lvl systems QF 3phase QF in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF", 
-				self.nPoles == 3, self.cbType == "QF"]):
-			schFamily = "E_SCH_SICHERUNGSSCHALTER-3P"
-			schType = "Schutzschalter_Zusätzliche"
-		
-		#2lvl systems QF 3phase QF in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI", 
-				self.nPoles == 3, self.cbType == "QF"]):
-			schFamily = "E_SCH_SICHERUNGSSCHALTER-3P"
-			schType = "Schutzschalter_Zusätzliche_N"
-		
-		#2lvl systems QF-FI phase QF in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF",
-						self.nPoles == 1, self.cbType == "QF-FI"]):
-			schFamily = "E_SCH_QF-FI-SCHALTER-1P"
-			schType = "QF-FI_Zusätzliche"
-		
-		#2lvl systems QF-FI 1phase QF-FI in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI",
-						self.nPoles == 1, self.cbType == "QF-FI"]):
-			schFamily = "E_SCH_QF-FI-SCHALTER-1P"
-			schType = "QF-FI_Zusätzliche_N"
+		#for "Einspeisung" schema
+		#diagramm is writen in board parameter
+		if all([brdi == 0, sysi == 0]):
+			schFamily = mainBrd.LookupParameter("E_Sch_Family").AsString()
+			schType = mainBrd.LookupParameter("E_Sch_FamilyType").AsString()
 
-		#2lvl systems QF-FI 3phase QF in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF",
-						self.nPoles == 3, self.cbType == "QF-FI"]):
-			schFamily = "E_SCH_QF-FI-SCHALTER-3P"
-			schType = "QF-FI_Zusätzliche"
-		
-		#2lvl systems QF-FI 3phase QF-FI in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI",
-						self.nPoles == 3, self.cbType == "QF-FI"]):
-			schFamily = "E_SCH_QF-FI-SCHALTER-3P"
-			schType = "QF-FI_Zusätzliche_N"
-		
+		#for "Electrical" schema
 		else:
-			schFamily = ""
-			schType = ""
+			#diagramm is writen in electrical system parameter
+			schFamily = self.rvtSys.LookupParameter("E_Sch_Family").AsString()
+			schType = self.rvtSys.LookupParameter("E_Sch_FamilyType").AsString()
 		
 		tp = getTypeByCatFamType(
 				BuiltInCategory.OST_GenericAnnotation,
 				schFamily,
 				schType)
-		
 		return tp
 
 	def __getLocation__ (self):
 		modulSize = self.schType.LookupParameter("E_PositionsHeld").AsInteger()
 		
-		#Zerro modul 
-		if modulSize == 0:
-			dia.currentPage += 1
-			dia.currentPos = 0
-			self.location = dia.coordList[dia.currentPos]
-			dia.currentPos += 3
+	# 	#Zerro modul 
+	# 	if modulSize == 0:
+	# 		dia.currentPage += 1
+	# 		dia.currentPos = 0
+	# 		self.location = dia.coordList[dia.currentPos]
+	# 		dia.currentPos += 3
 		
-		#next modules
-		nextPos = dia.currentPos + modulSize
-		if nextPos <= 9 and modulSize > 0: #enought
-			self.location = dia.coordList[dia.currentPos]
-			dia.currentPos = nextPos
+	# 	#next modules
+	# 	nextPos = dia.currentPos + modulSize
+	# 	if nextPos <= 9 and modulSize > 0: #enought
+	# 		self.location = dia.coordList[dia.currentPos]
+	# 		dia.currentPos = nextPos
 
-		if nextPos > 9 and modulSize > 0:
-			dia.currentPage += 1
-			dia.currentPos = 1
-			self.location = dia.coordList[dia.currentPos]
-			dia.currentPos = 1 + modulSize
+	# 	if nextPos > 9 and modulSize > 0:
+	# 		dia.currentPage += 1
+	# 		dia.currentPos = 1
+	# 		self.location = dia.coordList[dia.currentPos]
+	# 		dia.currentPos = 1 + modulSize
 		
-		#set page
-		self.pageN = dia.currentPage
+	# 	#set page
+	# 	self.pageN = dia.currentPage
 
-	def placeDiagramm (self):
-		global doc
-		global sheetLst
-		self.diaInst = doc.Create.NewFamilyInstance(
-					self.location, 
-					self.schType,
-					sheetLst[self.pageN])
+	# def placeDiagramm (self):
+	# 	global doc
+	# 	global sheetLst
+	# 	self.diaInst = doc.Create.NewFamilyInstance(
+	# 				self.location, 
+	# 				self.schType,
+	# 				sheetLst[self.pageN])
 
-	def __getParameters__ (self):
-		outlist = list()
-		#read info from board
-		if self.sysIndex == 0:
-			brd = [x for x in self.rvtSys.Elements][0]
-			frmSize = brd.LookupParameter("MC Frame Size").AsDouble()
-			isD = brd.LookupParameter("E_IsDisconnector").AsInteger()
-			if isD == 0:
-				cbType = "QF"
-			else:
-				cbType = "QS"
+	# def __getParameters__ (self):
+	# 	outlist = list()
+	# 	#read info from board
+	# 	if self.sysIndex == 0:
+	# 		brd = [x for x in self.rvtSys.Elements][0]
+	# 		frmSize = brd.LookupParameter("MC Frame Size").AsDouble()
+	# 		isD = brd.LookupParameter("E_IsDisconnector").AsInteger()
+	# 		if isD == 0:
+	# 			cbType = "QF"
+	# 		else:
+	# 			cbType = "QS"
 
-		#read info from system
-		if self.sysIndex > 0:
-			frmSize = self.rvtSys.LookupParameter("MC Frame Size").AsDouble()
-			cbType = self.rvtSys.LookupParameter("MC CB Type").AsString()
+	# 	#read info from system
+	# 	if self.sysIndex > 0:
+	# 		frmSize = self.rvtSys.LookupParameter("MC Frame Size").AsDouble()
+	# 		cbType = self.rvtSys.LookupParameter("MC CB Type").AsString()
 		
-		cName = self.rvtSys.get_Parameter(BuiltInParameter.RBS_ELEC_CIRCUIT_NAME).AsString()
-		cab = self.rvtSys.LookupParameter("E_CableType").AsString()
+	# 	cName = self.rvtSys.get_Parameter(BuiltInParameter.RBS_ELEC_CIRCUIT_NAME).AsString()
+	# 	cab = self.rvtSys.LookupParameter("E_CableType").AsString()
 		
-		outlist.append(["MC Frame Size", frmSize])
-		outlist.append(["E_CableType", cab])
-		outlist.append(["MC CB Type", cbType])
-		outlist.append(["RBS_ELEC_CIRCUIT_NAME", cName])
-		map(lambda x: self.paramLst.append(x), outlist)
+	# 	outlist.append(["MC Frame Size", frmSize])
+	# 	outlist.append(["E_CableType", cab])
+	# 	outlist.append(["MC CB Type", cbType])
+	# 	outlist.append(["RBS_ELEC_CIRCUIT_NAME", cName])
+	# 	map(lambda x: self.paramLst.append(x), outlist)
 
-	def setParameters (self):
-		for i in self.paramLst:
-			elem = self.diaInst
-			pName = i[0]
-			pValue = i[1]
-			SetupParVal (elem, pName, pValue)
+	# def setParameters (self):
+	# 	for i in self.paramLst:
+	# 		elem = self.diaInst
+	# 		pName = i[0]
+	# 		pValue = i[1]
+	# 		SetupParVal (elem, pName, pValue)
 
 brdName = IN[0]
 createNewScheets = IN[1]
@@ -403,7 +328,6 @@ mainBrd = getByCatAndStrParam(
 		BuiltInCategory.OST_ElectricalEquipment,
 		BuiltInParameter.RBS_ELEC_PANEL_NAME,
 		brdName, False)[0]
-mainIsDisc = mainBrd.LookupParameter("E_IsDisconnector").AsInteger()
 
 #get connectedBrds
 connectedBrds = getByCatAndStrParam(
@@ -422,11 +346,17 @@ lowbrds = [i for i in lowbrds if
 
 #get systems
 lowSystems = map(lambda x: getSystems(x), lowbrds)
-lowSystemsId = list(itertools.chain.from_iterable(lowSystems))
-lowSystemsId = [i.Id for i in lowSystemsId]
 
-mainSystems = [i for i in getSystems(mainBrd)
- 				if i.Id not in lowSystemsId]
+if lowSystems:
+	lowSystemsId = list(itertools.chain.from_iterable(lowSystems))
+	lowSystemsId = [i.Id for i in lowSystemsId]
+	mainSystems = [i for i in getSystems(mainBrd)
+ 					if i.Id not in lowSystemsId]
+else:
+	try:
+		mainSystems = [i for i in getSystems(mainBrd)]
+	except:
+		raise ValueError("Board have no electrical system")
 
 allSystems = list()
 allSystems.append(mainSystems)
@@ -496,6 +426,8 @@ for i, sysLst in enumerate(allSystems):
 # #=========End transaction
 # TransactionManager.Instance.TransactionTaskDone()
 
+
 #OUT = map(lambda x: [dia.coordList.index(x.location), x.pageN], diaList)
 #OUT = map(lambda x: x.paramLst, diaList)
-OUT = allSystems
+OUT = [x.schType for x in diaList]
+#OUT = mainBrd.LookupParameter("E_Sch_Family").AsString()
