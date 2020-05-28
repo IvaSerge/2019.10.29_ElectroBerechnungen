@@ -92,48 +92,6 @@ def getByCatAndStrParam (_bic, _bip, _val, _isType):
 	
 	return elem
 
-def addFooter(_diaList, _mainBrd, _lowbrds):
-	outlist = list()
-	#=====boardLists=====
-	brdList = [_mainBrd]
-	func = lambda x: brdList.append(x)
-	map (func, _lowbrds)
-
-	for i, brd in enumerate(brdList):
-	#=====getFooterType====
-		#find board schema type
-		boardDia = [x.diaType for x in _diaList
-					if x.brdIndex == i][0]
-		
-		schFamily = boardDia.LookupParameter("E_Sch_Family").AsString()
-		schType = boardDia.LookupParameter("E_Sch_FamilyType").AsString()
-		try:
-			tp = getTypeByCatFamType(
-				BuiltInCategory.OST_GenericAnnotation,
-				schFamily,
-				schType)
-		except:
-			raise ValueError("No 2D diagram found in board family".format(self))
-		
-		#=====getLocation=====
-		lastDia = [x.diaType for x in _diaList
-					if x.brdIndex == i][-1]
-		previousModulSize = lastDia.LookupParameter("E_PositionsHeld").AsInteger()
-		lastIndex = [dia.coordList.index((x.location)) for x in _diaList
-					if x.brdIndex == i][-1]
-		footIndex = lastIndex + previousModulSize
-		locPnt =  locPnt = dia.coordList[footIndex]
-
-		onPage = max([x.pageN for x in _diaList
-					if x.brdIndex == i])
-		#=====create=====
-		diaInst = doc.Create.NewFamilyInstance(
-		 			locPnt, 
-		 			tp,
-		 			sheetLst[onPage])
-		outlist.append(diaInst)
-	return outlist
-
 def addFiller(_diaList):
 	global sheetLst
 	outlist = list()
@@ -209,13 +167,12 @@ class dia():
 		self.location = None
 		self.pageN = None
 		self.diaInst = None
-		self.diaType = None
 		self.paramLst = list()
 		
-		try:
-			self.schType = self.__getType__()
-		except:
-			raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
+		#try:
+		self.schType = self.__getType__()
+		#except:
+		#	raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
 		
 		self.__getLocation__()
 		# self.__getParameters__()
@@ -223,53 +180,87 @@ class dia():
 	def __getType__ (self):
 		global mainBrd
 		global doc
+		global diaList
 		brdi = self.brdIndex
 		sysi = self.sysIndex
-		
+		schFamily = None
+		schType = None
+
 		#for "Einspeisung" schema
 		#diagramm is writen in board parameter
 		if all([brdi == 0, sysi == 0]):
 			schFamily = mainBrd.LookupParameter("E_Sch_Family").AsString()
 			schType = mainBrd.LookupParameter("E_Sch_FamilyType").AsString()
 
+		#for footer
+		elif  not(self.rvtSys) and sysi == 11:
+			#find board schema type
+			boardDia = [x.schType for x in diaList
+						if x.brdIndex == brdi][0]
+			schFamily = boardDia.LookupParameter("E_Sch_Family").AsString()
+			schType = boardDia.LookupParameter("E_Sch_FamilyType").AsString()
+			
 		#for "Electrical" schema
-		else:
+		elif self.rvtSys:
 			#diagramm is writen in electrical system parameter
 			schFamily = self.rvtSys.LookupParameter("E_Sch_Family").AsString()
 			schType = self.rvtSys.LookupParameter("E_Sch_FamilyType").AsString()
+		else: pass
+
+		if schFamily and schType:
+			tp = getTypeByCatFamType(
+					BuiltInCategory.OST_GenericAnnotation,
+					schFamily,
+					schType)
+		else:
+			tp
 		
-		tp = getTypeByCatFamType(
-				BuiltInCategory.OST_GenericAnnotation,
-				schFamily,
-				schType)
-		self.diaType = tp
-		return self.diaType
+		return tp
 
 	def __getLocation__ (self):
+		global dialist
 		brdi = self.brdIndex
 		sysi = self.sysIndex
 		modulSize = self.schType.LookupParameter("E_PositionsHeld").AsInteger()
+		nextPos = dia.currentPos + modulSize
 		
 		#Start modul 
 	 	if 	sysi == 0:
 	 		dia.currentPage += 1
 	 		dia.currentPos = 1
 	 		self.location = dia.coordList[dia.currentPos]
+			self.pageN = dia.currentPage
+			dia.currentPos = 1 + modulSize
 		
-	 	#next modules
-	 	nextPos = dia.currentPos + modulSize
-	 	if nextPos <= 9:  #enought space for next element
+		#Footer
+		elif sysi == 11:
+			lastDia = [x.schType for x in diaList
+						if x.brdIndex == brdi][-1]
+			previousModulSize = lastDia.LookupParameter("E_PositionsHeld").AsInteger()
+			lastIndex = [dia.coordList.index((x.location)) for x in diaList
+						if x.brdIndex == brdi][-1]
+			footIndex = lastIndex + previousModulSize
+			self.location = dia.coordList[footIndex]
+			self.pageN = max([x.pageN for x in diaList
+						if x.brdIndex == brdi])
+											
+		#next modules
+		#enought space for next element
+		elif nextPos <= 9:
 	 		self.location = dia.coordList[dia.currentPos]
 			dia.currentPos = nextPos
-
-	 	if nextPos > 9:
+			self.pageN = dia.currentPage
+		
+		#next modules
+		#not enought space for next element
+		elif nextPos > 9:
 	 		dia.currentPage += 1
 	 		dia.currentPos = 1
 	 		self.location = dia.coordList[dia.currentPos]
 	 		dia.currentPos = 1 + modulSize
-		
-	 	#set page
-	 	self.pageN = dia.currentPage
+			self.pageN = dia.currentPage
+		else: pass
+
 
 	def placeDiagramm (self):
 		global doc
@@ -356,13 +347,19 @@ allSystems.append(mainSystems)
 map(lambda x: allSystems.append(x), lowSystems)
 
 diaList = list()
-#========Initialaise dia class
+#========Initialaise dia class for Systems
 for i, sysLst in enumerate(allSystems):
 	for j, sys in enumerate (sysLst):
 		diaList.append(dia(sys, i, j))
 
-pages = max([x.pageN for x in diaList])
+#========Initialaise dia class for Footers Headers and Fillers
+#headers = [dia(None, x, 10) for x in range(len(lowbrds) + 1)]
+footers = [dia(None, x, 11) for x in range(len(lowbrds) + 1)]
+#fillers = [dia(None, x, 19) for x in range(len(lowbrds) + 1)]
 
+
+
+pages = max([x.pageN for x in diaList])
 pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages+1)]
 pageNameLst = [brdName] * (pages+1)
 
@@ -411,16 +408,19 @@ if createNewScheets == True:
 				doc, shemaPlankopf.Id)), range(pages))
 	map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
+#========Place diagramms========
 map(lambda x: x.placeDiagramm(), diaList)
-footers = addFooter(diaList, mainBrd, lowbrds)
-# fillers = addFiller(diaList)
-# map(lambda x: x.setParameters(), diaList)
-
-# #=========End transaction
-# TransactionManager.Instance.TransactionTaskDone()
+map(lambda x: x.placeDiagramm(), footers)
 
 
-#OUT = map(lambda x: [dia.coordList.index(x.location), x.pageN], diaList)
+#fillers = addFiller(diaList)
+#map(lambda x: x.setParameters(), diaList)
+
+#=========End transaction
+TransactionManager.Instance.TransactionTaskDone()
+
+
+#OUT = map(lambda x: [x.location, x.pageN], diaList)
 #OUT = map(lambda x: x.paramLst, diaList)
-OUT = diaList
+OUT = footers
 #OUT = mainBrd.LookupParameter("E_Sch_Family").AsString()
