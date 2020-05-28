@@ -92,52 +92,45 @@ def getByCatAndStrParam (_bic, _bip, _val, _isType):
 	
 	return elem
 
-def addFooter(_diaList):
-	global sheetLst
+def addFooter(_diaList, _mainBrd, _lowbrds):
 	outlist = list()
-	schFamily = "E_SCH_Footer"
-	schType = ""
-	pages = max([x.pageN for x in _diaList]) + 1
-	
-	for i in range(1, pages):
-		onPage = [x for x in _diaList if x.pageN == i]
-		brd = onPage[0].brdIndex
-		brdSys = [x for x in _diaList
-				if x.brdIndex == brd
-				and x.sysIndex == 0][0]
-		cbType = brdSys.cbType
+	#=====boardLists=====
+	brdList = [_mainBrd]
+	func = lambda x: brdList.append(x)
+	map (func, _lowbrds)
+
+	for i, brd in enumerate(brdList):
+	#=====getFooterType====
+		#find board schema type
+		boardDia = [x.diaType for x in _diaList
+					if x.brdIndex == i][0]
 		
-		#=====getType=====
-		#mainBrd systems QF 1phase
-		if brd == 0 and brdSys.sysIndex == 0:
-			schType = "Primärreifen"
-		
-		#2lvl systems QF
-		if brd > 0 and brdSys.cbType == "QF":
-			schType = "Zusätzliche"
-		
-		#2lvl systems FU+FI
-		if brd > 0 and "FI" in brdSys.cbType:
-			schType = "Zusätzliche_N"
+		schFamily = boardDia.LookupParameter("E_Sch_Family").AsString()
+		schType = boardDia.LookupParameter("E_Sch_FamilyType").AsString()
+		try:
+			tp = getTypeByCatFamType(
+				BuiltInCategory.OST_GenericAnnotation,
+				schFamily,
+				schType)
+		except:
+			raise ValueError("No 2D diagram found in board family".format(self))
 		
 		#=====getLocation=====
-		lastIndex = max([dia.coordList.index((x.location))
-							for x in _diaList
-							if x.pageN == i])
-		footIndex = lastIndex +1
-		locPnt = dia.coordList[footIndex]
-		
-		tp = getTypeByCatFamType(
-			BuiltInCategory.OST_GenericAnnotation,
-			schFamily,
-			schType)
-		
+		lastDia = [x.diaType for x in _diaList
+					if x.brdIndex == i][-1]
+		previousModulSize = lastDia.LookupParameter("E_PositionsHeld").AsInteger()
+		lastIndex = [dia.coordList.index((x.location)) for x in _diaList
+					if x.brdIndex == i][-1]
+		footIndex = lastIndex + previousModulSize
+		locPnt =  locPnt = dia.coordList[footIndex]
+
+		onPage = max([x.pageN for x in _diaList
+					if x.brdIndex == i])
 		#=====create=====
 		diaInst = doc.Create.NewFamilyInstance(
-					locPnt, 
-					tp,
-					sheetLst[i])
-		
+		 			locPnt, 
+		 			tp,
+		 			sheetLst[onPage])
 		outlist.append(diaInst)
 	return outlist
 
@@ -150,7 +143,6 @@ def addFiller(_diaList):
 			BuiltInCategory.OST_GenericAnnotation,
 			schFamily,
 			schType)
-	
 	pages = max([x.pageN for x in _diaList]) + 1
 	for i in range(1, pages):
 		onPage = [x for x in _diaList if x.pageN == i]
@@ -196,7 +188,7 @@ class dia():
 	currentPage = 0
 	currentPos = 0
 	subBoardObj = None
-	
+		
 	#coordinates of points on scheet
 	coordList = list()
 	coordList.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
@@ -215,10 +207,9 @@ class dia():
 		self.sysIndex = _sysIndex
 		self.rvtSys = _rvtSys
 		self.location = None
-		self.cbType = _rvtSys.LookupParameter("MC CB Type").AsString()
-		self.nPoles = _rvtSys.get_Parameter(BuiltInParameter.RBS_ELEC_NUMBER_OF_POLES).AsInteger()
 		self.pageN = None
 		self.diaInst = None
+		self.diaType = None
 		self.paramLst = list()
 		
 		try:
@@ -251,7 +242,8 @@ class dia():
 				BuiltInCategory.OST_GenericAnnotation,
 				schFamily,
 				schType)
-		return tp
+		self.diaType = tp
+		return self.diaType
 
 	def __getLocation__ (self):
 		brdi = self.brdIndex
@@ -386,7 +378,7 @@ shemaPlankopf = getByCatAndStrParam(
 		BuiltInParameter.SYMBOL_NAME_PARAM,
 		"WSP_Plankopf_Shema", True)[0]
 
-# #========Find sheets
+#========Find sheets
 existingSheets = [i for i in FilteredElementCollector(doc).
 			OfCategory(BuiltInCategory.OST_Sheets).
 			WhereElementIsNotElementType().
@@ -397,7 +389,7 @@ existingSheets = [i for i in FilteredElementCollector(doc).
 #=========Start transaction
 TransactionManager.Instance.EnsureInTransaction(doc)
 
-# #========Create sheets========
+#========Create sheets========
 sheetLst = list()
 if createNewScheets == False:
 	sheetLst = existingSheets
@@ -420,7 +412,7 @@ if createNewScheets == True:
 	map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
 map(lambda x: x.placeDiagramm(), diaList)
-# footers = addFooter(diaList)
+footers = addFooter(diaList, mainBrd, lowbrds)
 # fillers = addFiller(diaList)
 # map(lambda x: x.setParameters(), diaList)
 
@@ -430,5 +422,5 @@ map(lambda x: x.placeDiagramm(), diaList)
 
 #OUT = map(lambda x: [dia.coordList.index(x.location), x.pageN], diaList)
 #OUT = map(lambda x: x.paramLst, diaList)
-OUT = pageNameLst
+OUT = diaList
 #OUT = mainBrd.LookupParameter("E_Sch_Family").AsString()
