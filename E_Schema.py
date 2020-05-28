@@ -20,7 +20,7 @@ from RevitServices.Persistence import DocumentManager
 from RevitServices.Transactions import TransactionManager
 doc = DocumentManager.Instance.CurrentDBDocument
 
-#region
+#region "global functions"
 
 def GetBuiltInParam(paramName):
 	builtInParams = System.Enum.GetValues(BuiltInParameter)
@@ -143,6 +143,8 @@ def getTypeByCatFamType (_bic, _fam, _type):
 
 class dia():
 	"""Diagramm class"""
+
+#region "class varaibles"
 	currentPage = 0
 	currentPos = 0
 	subBoardObj = None
@@ -159,6 +161,7 @@ class dia():
 	coordList.append(XYZ(0.660433070865899, 0.669291338582678, 0))
 	coordList.append(XYZ(0.751640419947264, 0.669291338582678, 0))
 	coordList.append(XYZ(0.84284776902863, 0.669291338582678, 0))
+#endgerion
 
 	def __init__(self, _rvtSys, _brdIndex, _sysIndex):
 		self.brdIndex = _brdIndex
@@ -169,10 +172,10 @@ class dia():
 		self.diaInst = None
 		self.paramLst = list()
 		
-		#try:
-		self.schType = self.__getType__()
-		#except:
-		#	raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
+		try:
+			self.schType = self.__getType__()
+		except:
+			raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
 		
 		self.__getLocation__()
 		# self.__getParameters__()
@@ -192,28 +195,30 @@ class dia():
 			schFamily = mainBrd.LookupParameter("E_Sch_Family").AsString()
 			schType = mainBrd.LookupParameter("E_Sch_FamilyType").AsString()
 
+		#for header
+		elif  not(self.rvtSys) and sysi == 10:
+			schFamily = "E_SCH_Filler"
+			schType = "Filler_Start"
+		
 		#for footer
 		elif  not(self.rvtSys) and sysi == 11:
 			#find board schema type
 			boardDia = [x.schType for x in diaList
 						if x.brdIndex == brdi][0]
 			schFamily = boardDia.LookupParameter("E_Sch_Family").AsString()
-			schType = boardDia.LookupParameter("E_Sch_FamilyType").AsString()
-			
+			schType = boardDia.LookupParameter("E_Sch_FamilyType").AsString()	
+
 		#for "Electrical" schema
 		elif self.rvtSys:
 			#diagramm is writen in electrical system parameter
 			schFamily = self.rvtSys.LookupParameter("E_Sch_Family").AsString()
 			schType = self.rvtSys.LookupParameter("E_Sch_FamilyType").AsString()
+		
 		else: pass
-
-		if schFamily and schType:
-			tp = getTypeByCatFamType(
-					BuiltInCategory.OST_GenericAnnotation,
-					schFamily,
-					schType)
-		else:
-			tp
+		tp = getTypeByCatFamType(
+				BuiltInCategory.OST_GenericAnnotation,
+				schFamily,
+				schType)
 		
 		return tp
 
@@ -231,9 +236,15 @@ class dia():
 	 		self.location = dia.coordList[dia.currentPos]
 			self.pageN = dia.currentPage
 			dia.currentPos = 1 + modulSize
+
+		#Header
+		elif sysi == 10 and not(self.rvtSys):
+			self.location = dia.coordList[0]
+			#brdIndex == is equal page number
+			self.pageN = self.brdIndex		
 		
 		#Footer
-		elif sysi == 11:
+		elif sysi == 11 and not(self.rvtSys):
 			lastDia = [x.schType for x in diaList
 						if x.brdIndex == brdi][-1]
 			previousModulSize = lastDia.LookupParameter("E_PositionsHeld").AsInteger()
@@ -261,7 +272,6 @@ class dia():
 			self.pageN = dia.currentPage
 		else: pass
 
-
 	def placeDiagramm (self):
 		global doc
 		global sheetLst
@@ -269,6 +279,8 @@ class dia():
 					self.location, 
 					self.schType,
 					sheetLst[self.pageN])
+
+#region "get-set diagramm parameters"
 
 	# def __getParameters__ (self):
 	# 	outlist = list()
@@ -302,10 +314,12 @@ class dia():
 	# 		pName = i[0]
 	# 		pValue = i[1]
 	# 		SetupParVal (elem, pName, pValue)
+#endregion
 
 brdName = IN[0]
 createNewScheets = IN[1]
 reload = IN[2]
+outlist = list()
 
 #get mainBrd by name
 mainBrd = getByCatAndStrParam(
@@ -352,16 +366,16 @@ for i, sysLst in enumerate(allSystems):
 	for j, sys in enumerate (sysLst):
 		diaList.append(dia(sys, i, j))
 
-#========Initialaise dia class for Footers Headers and Fillers
-#headers = [dia(None, x, 10) for x in range(len(lowbrds) + 1)]
-footers = [dia(None, x, 11) for x in range(len(lowbrds) + 1)]
-#fillers = [dia(None, x, 19) for x in range(len(lowbrds) + 1)]
-
-
-
 pages = max([x.pageN for x in diaList])
 pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages+1)]
 pageNameLst = [brdName] * (pages+1)
+
+#========Initialaise dia class for Footers Headers and Fillers
+headers = [dia(None, x, 10) for x in range(1, pages + 1)]
+footers = [dia(None, x, 11) for x in range(len(lowbrds) + 1)]
+#fillers = [dia(None, x, 19) for x in range(len(lowbrds) + 1)]
+
+#region "create lists"
 
 #get TitleBlocks
 titleblatt = getByCatAndStrParam(
@@ -409,9 +423,19 @@ if createNewScheets == True:
 	map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
 #========Place diagramms========
+for dia in diaList:
+	try:
+		dia.placeDiagramm()
+		outlist.append(dia.diaInst)
+	except:
+		outlist.append(None)
+
+
 map(lambda x: x.placeDiagramm(), diaList)
 map(lambda x: x.placeDiagramm(), footers)
+map(lambda x: x.placeDiagramm(), headers)
 
+#endregion
 
 #fillers = addFiller(diaList)
 #map(lambda x: x.setParameters(), diaList)
@@ -420,7 +444,8 @@ map(lambda x: x.placeDiagramm(), footers)
 TransactionManager.Instance.TransactionTaskDone()
 
 
-#OUT = map(lambda x: [x.location, x.pageN], diaList)
+
+OUT = map(lambda x: [dia.coordList.index((x.location)), x.pageN, x.diaInst], diaList)
 #OUT = map(lambda x: x.paramLst, diaList)
-OUT = footers
+#OUT = diaList
 #OUT = mainBrd.LookupParameter("E_Sch_Family").AsString()
