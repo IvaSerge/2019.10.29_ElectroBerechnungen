@@ -206,7 +206,13 @@ class dia():
 			boardDia = [x.schType for x in diaList
 						if x.brdIndex == brdi][0]
 			schFamily = boardDia.LookupParameter("E_Sch_Family").AsString()
-			schType = boardDia.LookupParameter("E_Sch_FamilyType").AsString()	
+			schType = boardDia.LookupParameter("E_Sch_FamilyType").AsString()
+
+		#for filler
+		elif  not(self.rvtSys) and sysi < 10:
+			#find board schema type
+			schFamily = "E_SCH_Filler"
+			schType = "Filler_1modul"	
 
 		#for "Electrical" schema
 		elif self.rvtSys:
@@ -254,7 +260,13 @@ class dia():
 			self.location = dia.coordList[footIndex]
 			self.pageN = max([x.pageN for x in diaList
 						if x.brdIndex == brdi])
-											
+
+		#Filler
+		elif not(self.rvtSys) and sysi < 10:
+			self.location = dia.coordList[sysi]
+			#brdIndex == is equal page number
+			self.pageN = self.brdIndex	
+
 		#next modules
 		#enought space for next element
 		elif nextPos <= 9:
@@ -373,7 +385,28 @@ pageNameLst = [brdName] * (pages+1)
 #========Initialaise dia class for Footers Headers and Fillers
 headers = [dia(None, x, 10) for x in range(1, pages + 1)]
 footers = [dia(None, x, 11) for x in range(len(lowbrds) + 1)]
-#fillers = [dia(None, x, 19) for x in range(len(lowbrds) + 1)]
+
+#fillers after footers
+fillers = list ()
+for footer in footers:
+	footerPage = footer.pageN
+	footerIndex = dia.coordList.index(footer.location)
+	fillersOnPage = [dia(None, footer.pageN, x) 
+					for x in range(footerIndex + 1, 10)]
+	map(lambda x: fillers.append(x), fillersOnPage)
+
+#fillers for pages without footers
+pagesWithFooters =  [x.pageN for x in footers]
+pagesWithoutFooters = [x for x in range(1, pages + 1)
+						if x not in pagesWithFooters]
+
+for page in pagesWithoutFooters:
+	lastPageIndex = [x.sysIndex for x in diaList
+						if x.pageN == page][-1]
+	fillersOnPage = [dia(None, page, x) 
+					for x in range(lastPageIndex + 1, 10)]
+	map(lambda x: fillers.append(x), fillersOnPage)					
+	
 
 #region "create lists"
 
@@ -423,17 +456,10 @@ if createNewScheets == True:
 	map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
 #========Place diagramms========
-for dia in diaList:
-	try:
-		dia.placeDiagramm()
-		outlist.append(dia.diaInst)
-	except:
-		outlist.append(None)
-
-
 map(lambda x: x.placeDiagramm(), diaList)
 map(lambda x: x.placeDiagramm(), footers)
 map(lambda x: x.placeDiagramm(), headers)
+map(lambda x: x.placeDiagramm(), fillers)
 
 #endregion
 
@@ -445,7 +471,7 @@ TransactionManager.Instance.TransactionTaskDone()
 
 
 
-OUT = map(lambda x: [dia.coordList.index((x.location)), x.pageN, x.diaInst], diaList)
+#OUT = map(lambda x: [dia.coordList.index((x.location)), x.location, x.schType, x.pageN], fillers)
 #OUT = map(lambda x: x.paramLst, diaList)
-#OUT = diaList
+OUT = lastPageIndex
 #OUT = mainBrd.LookupParameter("E_Sch_Family").AsString()
