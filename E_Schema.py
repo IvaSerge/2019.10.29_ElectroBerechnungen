@@ -339,76 +339,63 @@ mainBrd = getByCatAndStrParam(
 		BuiltInParameter.RBS_ELEC_PANEL_NAME,
 		brdName, False)[0]
 
-#get connectedBrds
-connectedBrds = getByCatAndStrParam(
- 		BuiltInCategory.OST_ElectricalEquipment,
- 		BuiltInParameter.RBS_ELEC_PANEL_SUPPLY_FROM_PARAM,
- 		brdName, False)
-
-connectedBrds = sorted(connectedBrds, key=lambda brd:brd.Name)
-
-lowbrds = list()
-map(lambda x: lowbrds.append(x), connectedBrds)
-
-lowbrds = [i for i in lowbrds if 
- 			i.LookupParameter(
- 			"MC Panel Code").AsString() == brdName]
-
-#get systems
-lowSystems = map(lambda x: getSystems(x), lowbrds)
-
-if lowSystems:
-	lowSystemsId = list(itertools.chain.from_iterable(lowSystems))
-	lowSystemsId = [i.Id for i in lowSystemsId]
-	mainSystems = [i for i in getSystems(mainBrd)
- 					if i.Id not in lowSystemsId]
-else:
-	try:
-		mainSystems = [i for i in getSystems(mainBrd)]
-	except:
-		raise ValueError("Board have no electrical system")
-
-allSystems = list()
-allSystems.append(mainSystems)
-map(lambda x: allSystems.append(x), lowSystems)
+mainSystems = [i for i in getSystems(mainBrd)]
 
 diaList = list()
-#========Initialaise dia class for Systems
-for i, sysLst in enumerate(allSystems):
-	for j, sys in enumerate (sysLst):
-		diaList.append(dia(sys, i, j))
+#create tree of electircal systems and initiate dia class
+for i, sys in enumerate(mainSystems):
+	#mainboardSys
+	brdCategory = mainBrd.Category.Id
+	elems = [elem for elem in sys.Elements]
+	lowbrd = elems[0]
+	if lowbrd.Category.Id == brdCategory:
+		brdCode = elem.LookupParameter("MC Panel Code").AsString()
+	
+	if i == 0:
+	#System 0,0
+		diaList.append(dia(sys, 0, 0))
+	
+	#LowBoards systems
+	elif len(elems) == 1 and brdCode == brdName:
+		lowSystems = getSystems(lowbrd)
+		for j, lowSys in enumerate(lowSystems):
+			diaList.append(dia(lowSys, i, j))
+				
+	#Normal systems
+	else:
+		diaList.append(dia(sys, 0, i))
 
 pages = max([x.pageN for x in diaList])
 pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages+1)]
 pageNameLst = [brdName] * (pages+1)
 
 #========Initialaise dia class for Footers Headers and Fillers
-headers = [dia(None, x, 10) for x in range(1, pages + 1)]
-footers = [dia(None, x, 11) for x in range(len(lowbrds) + 1)]
+# headers = [dia(None, x, 10) for x in range(1, pages + 1)]
+# footers = [dia(None, x, 11) for x in range(len(lowbrds) + 1)]
 
-#fillers after footers
-fillers = list ()
-for footer in footers:
-	footerPage = footer.pageN
-	footerIndex = dia.coordList.index(footer.location)
-	fillersOnPage = [dia(None, footer.pageN, x) 
-					for x in range(footerIndex + 1, 10)]
-	map(lambda x: fillers.append(x), fillersOnPage)
+# #fillers after footers
+# fillers = list ()
+# for footer in footers:
+# 	footerPage = footer.pageN
+# 	footerIndex = dia.coordList.index(footer.location)
+# 	fillersOnPage = [dia(None, footer.pageN, x) 
+# 					for x in range(footerIndex + 1, 10)]
+# 	map(lambda x: fillers.append(x), fillersOnPage)
 
-#fillers for pages without footers
-pagesWithFooters =  [x.pageN for x in footers]
-pagesWithoutFooters = [x for x in range(1, pages + 1)
-						if x not in pagesWithFooters]
+# #fillers for pages without footers
+# pagesWithFooters =  [x.pageN for x in footers]
+# pagesWithoutFooters = [x for x in range(1, pages + 1)
+# 						if x not in pagesWithFooters]
 
-for page in pagesWithoutFooters:
-	lastPageIndex = [x.sysIndex for x in diaList
-						if x.pageN == page][-1]
-	fillersOnPage = [dia(None, page, x) 
-					for x in range(lastPageIndex + 1, 10)]
-	map(lambda x: fillers.append(x), fillersOnPage)					
+# for page in pagesWithoutFooters:
+# 	lastPageIndex = [x.sysIndex for x in diaList
+# 						if x.pageN == page][-1]
+# 	fillersOnPage = [dia(None, page, x) 
+# 					for x in range(lastPageIndex + 1, 10)]
+# 	map(lambda x: fillers.append(x), fillersOnPage)					
 	
 
-#region "create lists"
+#region "create pages"
 
 #get TitleBlocks
 titleblatt = getByCatAndStrParam(
@@ -457,14 +444,11 @@ if createNewScheets == True:
 
 #========Place diagramms========
 map(lambda x: x.placeDiagramm(), diaList)
-map(lambda x: x.placeDiagramm(), footers)
-map(lambda x: x.placeDiagramm(), headers)
-map(lambda x: x.placeDiagramm(), fillers)
+#map(lambda x: x.placeDiagramm(), footers)
+#map(lambda x: x.placeDiagramm(), headers)
+#map(lambda x: x.placeDiagramm(), fillers)
 
 #endregion
-
-#fillers = addFiller(diaList)
-#map(lambda x: x.setParameters(), diaList)
 
 #=========End transaction
 TransactionManager.Instance.TransactionTaskDone()
@@ -473,5 +457,5 @@ TransactionManager.Instance.TransactionTaskDone()
 
 #OUT = map(lambda x: [dia.coordList.index((x.location)), x.location, x.schType, x.pageN], fillers)
 #OUT = map(lambda x: x.paramLst, diaList)
-OUT = lastPageIndex
+OUT = diaList
 #OUT = mainBrd.LookupParameter("E_Sch_Family").AsString()
