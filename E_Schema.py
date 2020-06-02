@@ -237,11 +237,15 @@ class dia():
 		
 		#Start modul 
 	 	if 	sysi == 0:
-	 		dia.currentPage += 1
-	 		dia.currentPos = 1
+			#if it is not the first board - create page break
+			if brdi == 0:
+				dia.currentPos = 1
+				dia.currentPage += 1
+			
+				
 	 		self.location = dia.coordList[dia.currentPos]
 			self.pageN = dia.currentPage
-			dia.currentPos = 1 + modulSize
+			dia.currentPos += modulSize
 
 		#Header
 		elif sysi == 10 and not(self.rvtSys):
@@ -260,6 +264,7 @@ class dia():
 			self.location = dia.coordList[footIndex]
 			self.pageN = max([x.pageN for x in diaList
 						if x.brdIndex == brdi])
+			dia.currentPos += modulSize
 
 		#Filler
 		elif not(self.rvtSys) and sysi < 10:
@@ -342,6 +347,7 @@ mainBrd = getByCatAndStrParam(
 mainSystems = [i for i in getSystems(mainBrd)]
 
 diaList = list()
+footers = list()
 #create tree of electircal systems and initiate dia class
 for i, sys in enumerate(mainSystems):
 	#mainboardSys
@@ -360,39 +366,36 @@ for i, sys in enumerate(mainSystems):
 		lowSystems = getSystems(lowbrd)
 		for j, lowSys in enumerate(lowSystems):
 			diaList.append(dia(lowSys, i, j))
-				
-	#Normal systems
+			#If it is the last system - create footer.
+			if j == len(lowSystems) - 1:
+				newFooter = dia(None, i, 11)
+				footers.append(newFooter)
+
+	#Systems without boards
 	else:
 		diaList.append(dia(sys, 0, i))
+		#If it is the last system - create footer.
+		if i == len(mainSystems) - 1:
+				newFooter = dia(None, 0, 11)
+				footers.append(newFooter)
+
+
 
 pages = max([x.pageN for x in diaList])
 pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages+1)]
 pageNameLst = [brdName] * (pages+1)
 
 #========Initialaise dia class for Footers Headers and Fillers
-# headers = [dia(None, x, 10) for x in range(1, pages + 1)]
-# footers = [dia(None, x, 11) for x in range(len(lowbrds) + 1)]
+headers = [dia(None, x, 10) for x in range(1, pages + 1)]
 
-# #fillers after footers
-# fillers = list ()
-# for footer in footers:
-# 	footerPage = footer.pageN
-# 	footerIndex = dia.coordList.index(footer.location)
-# 	fillersOnPage = [dia(None, footer.pageN, x) 
-# 					for x in range(footerIndex + 1, 10)]
-# 	map(lambda x: fillers.append(x), fillersOnPage)
-
-# #fillers for pages without footers
-# pagesWithFooters =  [x.pageN for x in footers]
-# pagesWithoutFooters = [x for x in range(1, pages + 1)
-# 						if x not in pagesWithFooters]
-
-# for page in pagesWithoutFooters:
-# 	lastPageIndex = [x.sysIndex for x in diaList
-# 						if x.pageN == page][-1]
-# 	fillersOnPage = [dia(None, page, x) 
-# 					for x in range(lastPageIndex + 1, 10)]
-# 	map(lambda x: fillers.append(x), fillersOnPage)					
+#fillers for pages
+fillers = list()
+for page in range(1, pages+1):
+	lastPageIndex = [dia.coordList.index((x.location)) for x in diaList
+						if x.pageN == page][-1]
+	fillersOnPage = [dia(None, page, x) 
+					for x in range(lastPageIndex + 1, 10)]
+	map(lambda x: fillers.append(x), fillersOnPage)					
 	
 
 #region "create pages"
@@ -444,18 +447,16 @@ if createNewScheets == True:
 
 #========Place diagramms========
 map(lambda x: x.placeDiagramm(), diaList)
-#map(lambda x: x.placeDiagramm(), footers)
-#map(lambda x: x.placeDiagramm(), headers)
-#map(lambda x: x.placeDiagramm(), fillers)
+map(lambda x: x.placeDiagramm(), footers)
+map(lambda x: x.placeDiagramm(), headers)
+map(lambda x: x.placeDiagramm(), fillers)
 
 #endregion
 
 #=========End transaction
 TransactionManager.Instance.TransactionTaskDone()
 
-
-
 #OUT = map(lambda x: [dia.coordList.index((x.location)), x.location, x.schType, x.pageN], fillers)
 #OUT = map(lambda x: x.paramLst, diaList)
-OUT = diaList
+OUT = fillers
 #OUT = mainBrd.LookupParameter("E_Sch_Family").AsString()
