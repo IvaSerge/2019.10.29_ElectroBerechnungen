@@ -92,31 +92,6 @@ def getByCatAndStrParam (_bic, _bip, _val, _isType):
 	
 	return elem
 
-def addFiller(_diaList):
-	global sheetLst
-	outlist = list()
-	schFamily = "E_SCH_Filler"
-	schType = "Filler"
-	tp = getTypeByCatFamType(
-			BuiltInCategory.OST_GenericAnnotation,
-			schFamily,
-			schType)
-	pages = max([x.pageN for x in _diaList]) + 1
-	for i in range(1, pages):
-		onPage = [x for x in _diaList if x.pageN == i]
-		fillIndex = max([dia.coordList.index((x.location))
-							for x in _diaList
-							if x.pageN == i]) + 1
-		while fillIndex <= 9:
-			locPnt = dia.coordList[fillIndex]
-			diaInst = doc.Create.NewFamilyInstance(
-					locPnt, 
-					tp,
-					sheetLst[i])
-			fillIndex += 1
-			outlist.append(diaInst)
-	return outlist
-
 def getTypeByCatFamType (_bic, _fam, _type):
 	global doc
 	fnrvStr = FilterStringEquals()
@@ -161,6 +136,10 @@ class dia():
 	coordList.append(XYZ(0.660433070865899, 0.669291338582678, 0))
 	coordList.append(XYZ(0.751640419947264, 0.669291338582678, 0))
 	coordList.append(XYZ(0.84284776902863, 0.669291338582678, 0))
+
+	coordList.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
+	parametersToSet = list()
+	
 #endgerion
 
 	def __init__(self, _rvtSys, _brdIndex, _sysIndex):
@@ -225,25 +204,25 @@ class dia():
 				BuiltInCategory.OST_GenericAnnotation,
 				schFamily,
 				schType)
-		
 		return tp
 
 	def __getLocation__ (self):
 		global dialist
 		brdi = self.brdIndex
 		sysi = self.sysIndex
-		modulSize = self.schType.LookupParameter("E_PositionsHeld").AsInteger()
+		try:
+			modulSize = self.schType.LookupParameter("E_PositionsHeld").AsInteger()
+		except:
+			raise ValueError("No Type Parameter \"E_PositionsHeld\" in Family {0.schType.Family.Name}".format(self))
 		nextPos = dia.currentPos + modulSize
 		
 		#Start modul 
-	 	if 	sysi == 0:
+	 	if 	sysi == 0 and brdi == 0:
 			#if it is not the first board - create page break
 			if brdi == 0:
 				dia.currentPos = 1
-				dia.currentPage += 1
-			
-				
-	 		self.location = dia.coordList[dia.currentPos]
+				dia.currentPage += 1			
+		 		self.location = dia.coordList[dia.currentPos]
 			self.pageN = dia.currentPage
 			dia.currentPos += modulSize
 
@@ -261,10 +240,19 @@ class dia():
 			lastIndex = [dia.coordList.index((x.location)) for x in diaList
 						if x.brdIndex == brdi][-1]
 			footIndex = lastIndex + previousModulSize
-			self.location = dia.coordList[footIndex]
-			self.pageN = max([x.pageN for x in diaList
-						if x.brdIndex == brdi])
-			dia.currentPos += modulSize
+			
+			#enought space for Footer
+			if footIndex <= 10:
+				self.location = dia.coordList[footIndex]
+				self.pageN = max([x.pageN for x in diaList
+								if x.brdIndex == brdi])
+				dia.currentPos += modulSize
+			
+			else:
+			#not enought space for next Footer
+			#no need to created footer
+				self.location = None
+				self.pageN = None
 
 		#Filler
 		elif not(self.rvtSys) and sysi < 10:
@@ -331,6 +319,7 @@ class dia():
 	# 		pName = i[0]
 	# 		pValue = i[1]
 	# 		SetupParVal (elem, pName, pValue)
+
 #endregion
 
 brdName = IN[0]
@@ -369,17 +358,20 @@ for i, sys in enumerate(mainSystems):
 			#If it is the last system - create footer.
 			if j == len(lowSystems) - 1:
 				newFooter = dia(None, i, 11)
-				footers.append(newFooter)
+				#check if we need footer
+				if newFooter.location:
+					footers.append(newFooter)
 
 	#Systems without boards
 	else:
-		diaList.append(dia(sys, 0, i))
+	 	diaList.append(dia(sys, 0, i))
 		#If it is the last system - create footer.
 		if i == len(mainSystems) - 1:
 				newFooter = dia(None, 0, 11)
 				footers.append(newFooter)
 
 
+#region "create pages"
 
 pages = max([x.pageN for x in diaList])
 pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages+1)]
@@ -397,8 +389,6 @@ for page in range(1, pages+1):
 					for x in range(lastPageIndex + 1, 10)]
 	map(lambda x: fillers.append(x), fillersOnPage)					
 	
-
-#region "create pages"
 
 #get TitleBlocks
 titleblatt = getByCatAndStrParam(
@@ -458,5 +448,8 @@ TransactionManager.Instance.TransactionTaskDone()
 
 #OUT = map(lambda x: [dia.coordList.index((x.location)), x.location, x.schType, x.pageN], fillers)
 #OUT = map(lambda x: x.paramLst, diaList)
-OUT = fillers
+OUT = [x.location for x in diaList]
+#OUT = [x.schType for x in footers]
+#OUT = outlist
 #OUT = mainBrd.LookupParameter("E_Sch_Family").AsString()
+
