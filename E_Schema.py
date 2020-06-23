@@ -34,13 +34,41 @@ def GetBuiltInParam(paramName):
 			continue
 	return param[0]
 
+def GetParVal(elem, name):
+	#Параметр пользовательский
+	try:
+		param = elem.LookupParameter(name)
+		storeType = param.StorageType
+		if storeType == StorageType.String:
+			value = elem.LookupParameter(name).AsString()
+		elif storeType == StorageType.Integer:
+			value  = elem.LookupParameter(name).AsDouble()
+		elif storeType == StorageType.Double:
+			value = elem.LookupParameter(name).AsDouble()
+	
+	#Параметр встроенный
+	except:
+		bip = GetBuiltInParam(name)
+		storeType = elem.get_Parameter(bip).StorageType
+		if storeType == StorageType.String:
+			value = elem.get_Parameter(bip).AsString()
+		elif storeType == StorageType.Integer:
+			value  = elem.get_Parameter(bip).AsDouble()
+		elif storeType == StorageType.Double:
+			value = elem.get_Parameter(bip).AsDouble()
+		elif storeType == StorageType.ElementId:
+			value = elem.get_Parameter(bip).AsValueString()
+	return value
+
 def SetupParVal(elem, name, pValue):
 	global doc
 	try:
 		elem.LookupParameter(name).Set(pValue)
 	except:
-		bip = GetBuiltInParam(name)
-		elem.get_Parameter(bip).Set(pValue)
+		try:
+			bip = GetBuiltInParam(name)
+			elem.get_Parameter(bip).Set(pValue)
+		except: pass
 	return elem
 
 def getSystems (_brd):
@@ -136,9 +164,17 @@ class dia():
 	coordList.append(XYZ(0.660433070865899, 0.669291338582678, 0))
 	coordList.append(XYZ(0.751640419947264, 0.669291338582678, 0))
 	coordList.append(XYZ(0.84284776902863, 0.669291338582678, 0))
-
 	coordList.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
-	parametersToSet = list()
+
+	parToSet = list()
+	parToSet.append("RBS_ELEC_CIRCUIT_NAME")
+	parToSet.append("RBS_ELEC_CIRCUIT_NUMBER")
+	parToSet.append("RBS_ELEC_CIRCUIT_WIRE_TYPE_PARAM")
+	parToSet.append("CBT:CIR_Kabel")
+	parToSet.append("CBT:CIR_Nennstrom")
+	parToSet.append("CBT:CIR_Schutz")
+	parToSet.append("CBT:CIR_Schutztyp")
+	parToSet.append("CBT:CIR_Elektrischen Schlag")
 	
 #endgerion
 
@@ -156,8 +192,7 @@ class dia():
 		except:
 			raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
 		
-		self.__getLocation__()
-		# self.__getParameters__()
+		self.__getLocation__()		
 
 	def __getType__ (self):
 		global mainBrd
@@ -287,38 +322,35 @@ class dia():
 
 #region "get-set diagramm parameters"
 
-	# def __getParameters__ (self):
-	# 	outlist = list()
-	# 	#read info from board
-	# 	if self.sysIndex == 0:
-	# 		brd = [x for x in self.rvtSys.Elements][0]
-	# 		frmSize = brd.LookupParameter("MC Frame Size").AsDouble()
-	# 		isD = brd.LookupParameter("E_IsDisconnector").AsInteger()
-	# 		if isD == 0:
-	# 			cbType = "QF"
-	# 		else:
-	# 			cbType = "QS"
-
-	# 	#read info from system
-	# 	if self.sysIndex > 0:
-	# 		frmSize = self.rvtSys.LookupParameter("MC Frame Size").AsDouble()
-	# 		cbType = self.rvtSys.LookupParameter("MC CB Type").AsString()
+	def getParameters (self):
+		#read info from board
+		# if self.sysIndex == 0:
+		# 	brd = [x for x in self.rvtSys.Elements][0]
+		# 	frmSize = brd.LookupParameter("MC Frame Size").AsDouble()
+		# 	isD = brd.LookupParameter("E_IsDisconnector").AsInteger()
+		# 	if isD == 0:
+		# 		cbType = "QF"
+		# 	else:
+		# 		cbType = "QS"
 		
-	# 	cName = self.rvtSys.get_Parameter(BuiltInParameter.RBS_ELEC_CIRCUIT_NAME).AsString()
-	# 	cab = self.rvtSys.LookupParameter("E_CableType").AsString()
+		#read info from system
+		self.paramLst = [
+		GetParVal(self.rvtSys, x)
+				for x in dia.parToSet]
+		try:
+			self.paramLst = [
+					GetParVal(self.rvtSys, x)
+					for x in dia.parToSet]	
+		except:
+			self.paramLst = None
 		
-	# 	outlist.append(["MC Frame Size", frmSize])
-	# 	outlist.append(["E_CableType", cab])
-	# 	outlist.append(["MC CB Type", cbType])
-	# 	outlist.append(["RBS_ELEC_CIRCUIT_NAME", cName])
-	# 	map(lambda x: self.paramLst.append(x), outlist)
-
-	# def setParameters (self):
-	# 	for i in self.paramLst:
-	# 		elem = self.diaInst
-	# 		pName = i[0]
-	# 		pValue = i[1]
-	# 		SetupParVal (elem, pName, pValue)
+		
+	def setParameters (self):
+		for i,j in zip(self.parToSet, self.paramLst):
+			elem = self.diaInst
+			pName = i[0]
+			pValue = i[1]
+			SetupParVal (elem, i, j)
 
 #endregion
 
@@ -370,7 +402,6 @@ for i, sys in enumerate(mainSystems):
 				newFooter = dia(None, 0, 11)
 				footers.append(newFooter)
 
-
 #region "create pages"
 
 pages = max([x.pageN for x in diaList])
@@ -389,7 +420,6 @@ for page in range(1, pages+1):
 					for x in range(lastPageIndex + 1, 10)]
 	map(lambda x: fillers.append(x), fillersOnPage)					
 	
-
 #get TitleBlocks
 titleblatt = getByCatAndStrParam(
  		BuiltInCategory.OST_TitleBlocks,
@@ -441,6 +471,13 @@ map(lambda x: x.placeDiagramm(), footers)
 map(lambda x: x.placeDiagramm(), headers)
 map(lambda x: x.placeDiagramm(), fillers)
 
+#========Set Parameters========
+#========Prepare model parameters========
+map(lambda x: x.getParameters(), diaList)
+map(lambda x: x.setParameters(), diaList)
+
+
+
 #endregion
 
 #=========End transaction
@@ -448,7 +485,7 @@ TransactionManager.Instance.TransactionTaskDone()
 
 #OUT = map(lambda x: [dia.coordList.index((x.location)), x.location, x.schType, x.pageN], fillers)
 #OUT = map(lambda x: x.paramLst, diaList)
-OUT = [x.location for x in diaList]
+OUT = sheetLst
 #OUT = [x.schType for x in footers]
 #OUT = outlist
 #OUT = mainBrd.LookupParameter("E_Sch_Family").AsString()
