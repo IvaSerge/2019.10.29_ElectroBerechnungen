@@ -172,9 +172,9 @@ class dia():
 	parToSet.append("RBS_ELEC_CIRCUIT_WIRE_TYPE_PARAM")
 	parToSet.append("CBT:CIR_Kabel")
 	parToSet.append("CBT:CIR_Nennstrom")
-	parToSet.append("CBT:CIR_Schutz")
 	parToSet.append("CBT:CIR_Schutztyp")
 	parToSet.append("CBT:CIR_Elektrischen Schlag")
+	parToSet.append("ALL_MODEL_INSTANCE_COMMENTS")
 	
 #endgerion
 
@@ -320,39 +320,29 @@ class dia():
 					self.schType,
 					sheetLst[self.pageN])
 
-#region "get-set diagramm parameters"
 
 	def getParameters (self):
-		#read info from board
-		# if self.sysIndex == 0:
-		# 	brd = [x for x in self.rvtSys.Elements][0]
-		# 	frmSize = brd.LookupParameter("MC Frame Size").AsDouble()
-		# 	isD = brd.LookupParameter("E_IsDisconnector").AsInteger()
-		# 	if isD == 0:
-		# 		cbType = "QF"
-		# 	else:
-		# 		cbType = "QS"
-		
-		#read info from system
+		#для вводного щита
+		#для электрической системы
 		self.paramLst = [
 		GetParVal(self.rvtSys, x)
 				for x in dia.parToSet]
 		try:
-			self.paramLst = [
+			paramValue = [
 					GetParVal(self.rvtSys, x)
-					for x in dia.parToSet]	
+					for x in dia.parToSet]
+
+			self.paramLst = zip(dia.parToSet, paramValue)
 		except:
 			self.paramLst = None
 		
 		
 	def setParameters (self):
-		for i,j in zip(self.parToSet, self.paramLst):
+		for i,j in self.paramLst:
 			elem = self.diaInst
-			pName = i[0]
-			pValue = i[1]
 			SetupParVal (elem, i, j)
 
-#endregion
+
 
 brdName = IN[0]
 createNewScheets = IN[1]
@@ -366,6 +356,7 @@ mainBrd = getByCatAndStrParam(
 		brdName, False)[0]
 
 mainSystems = [i for i in getSystems(mainBrd)]
+mainSystems.sort(key = lambda x: GetParVal(x, "RBS_ELEC_CIRCUIT_NUMBER")) 
 
 diaList = list()
 footers = list()
@@ -385,14 +376,15 @@ for i, sys in enumerate(mainSystems):
 	#LowBoards systems
 	elif len(elems) == 1 and brdCode == brdName:
 		lowSystems = getSystems(lowbrd)
+		lowSystems.sort(key = lambda x: GetParVal(x, "RBS_ELEC_CIRCUIT_NUMBER")) 
 		for j, lowSys in enumerate(lowSystems):
 			diaList.append(dia(lowSys, i, j))
 			#If it is the last system - create footer.
-			if j == len(lowSystems) - 1:
-				newFooter = dia(None, i, 11)
-				#check if we need footer
-				if newFooter.location:
-					footers.append(newFooter)
+			#if j == len(lowSystems) - 1:
+			#	newFooter = dia(None, i, 11)
+			#	#check if we need footer
+			#	if newFooter.location:
+			#		footers.append(newFooter)
 
 	#Systems without boards
 	else:
@@ -485,8 +477,7 @@ TransactionManager.Instance.TransactionTaskDone()
 
 #OUT = map(lambda x: [dia.coordList.index((x.location)), x.location, x.schType, x.pageN], fillers)
 #OUT = map(lambda x: x.paramLst, diaList)
-OUT = sheetLst
+#OUT = sheetLst
 #OUT = [x.schType for x in footers]
-#OUT = outlist
+OUT = mainSystems
 #OUT = mainBrd.LookupParameter("E_Sch_Family").AsString()
-
