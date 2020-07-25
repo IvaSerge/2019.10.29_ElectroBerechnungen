@@ -174,7 +174,7 @@ class dia():
 	parToSet.append("CBT:CIR_Nennstrom")
 	parToSet.append("CBT:CIR_Schutztyp")
 	parToSet.append("CBT:CIR_Elektrischen Schlag")
-	parToSet.append("ALL_MODEL_INSTANCE_COMMENTS")
+	parToSet.append("E_Stromkreisprefix")
 	
 #endgerion
 
