@@ -25,39 +25,34 @@ doc = DocumentManager.Instance.CurrentDBDocument
 def GetBuiltInParam(paramName):
 	builtInParams = System.Enum.GetValues(BuiltInParameter)
 	param = []
-	
 	for i in builtInParams:
 		if i.ToString() == paramName:
 			param.append(i)
-			break
-		else:
-			continue
-	return param[0]
+			return i
 
 def GetParVal(elem, name):
+	value = None
 	#Параметр пользовательский
+	param = elem.LookupParameter(name)
+	#параметр не найден. Надо проверить, есть ли такой же встроенный параметр
+	if param == None:
+		param = elem.get_Parameter(GetBuiltInParam(name))
+
+	#Если параметр найден, считываем значение
 	try:
-		param = elem.LookupParameter(name)
 		storeType = param.StorageType
+		#value = storeType
 		if storeType == StorageType.String:
-			value = elem.LookupParameter(name).AsString()
+			value = param.AsString()
 		elif storeType == StorageType.Integer:
-			value  = elem.LookupParameter(name).AsDouble()
+			value  = param.AsDouble()
 		elif storeType == StorageType.Double:
-			value = elem.LookupParameter(name).AsDouble()
-	
-	#Параметр встроенный
-	except:
-		bip = GetBuiltInParam(name)
-		storeType = elem.get_Parameter(bip).StorageType
-		if storeType == StorageType.String:
-			value = elem.get_Parameter(bip).AsString()
-		elif storeType == StorageType.Integer:
-			value  = elem.get_Parameter(bip).AsDouble()
-		elif storeType == StorageType.Double:
-			value = elem.get_Parameter(bip).AsDouble()
+			value = param.AsDouble()
 		elif storeType == StorageType.ElementId:
-			value = elem.get_Parameter(bip).AsValueString()
+			value = param.AsValueString()
+	except:
+		pass
+
 	return value
 
 def SetupParVal(elem, name, pValue):
@@ -324,19 +319,11 @@ class dia():
 	def getParameters (self):
 		#для вводного щита
 		#для электрической системы
-		self.paramLst = [
-		GetParVal(self.rvtSys, x)
-				for x in dia.parToSet]
-		try:
-			paramValue = [
-					GetParVal(self.rvtSys, x)
-					for x in dia.parToSet]
+		self.paramLst = [[x, GetParVal(self.rvtSys, x)]
+						for x in dia.parToSet
+						if GetParVal(self.rvtSys, x) != None]
 
-			self.paramLst = zip(dia.parToSet, paramValue)
-		except:
-			self.paramLst = None
-		
-		
+
 	def setParameters (self):
 		for i,j in self.paramLst:
 			elem = self.diaInst
@@ -466,8 +453,7 @@ map(lambda x: x.placeDiagramm(), fillers)
 #========Set Parameters========
 #========Prepare model parameters========
 map(lambda x: x.getParameters(), diaList)
-map(lambda x: x.setParameters(), diaList)
-
+#map(lambda x: x.setParameters(), diaList)
 
 
 #endregion
@@ -476,8 +462,8 @@ map(lambda x: x.setParameters(), diaList)
 TransactionManager.Instance.TransactionTaskDone()
 
 #OUT = map(lambda x: [dia.coordList.index((x.location)), x.location, x.schType, x.pageN], fillers)
-#OUT = map(lambda x: x.paramLst, diaList)
+OUT = map(lambda x: x.paramLst, diaList)
 #OUT = sheetLst
 #OUT = [x.schType for x in footers]
-OUT = mainSystems
+#OUT = mainSystems
 #OUT = mainBrd.LookupParameter("E_Sch_Family").AsString()
