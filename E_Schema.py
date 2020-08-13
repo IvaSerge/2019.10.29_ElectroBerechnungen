@@ -74,6 +74,7 @@ def getSystems (_brd):
 		lowsysId = [i.Id for i in lowsys]
 		mainboardsys = [i for i in allsys if i.Id not in lowsysId][0]
 		lowsys = [i for i in allsys if i.Id in lowsysId]
+		lowsys.sort(key = lambda x: float(GetParVal(x, "RBS_ELEC_CIRCUIT_NUMBER")))
 		outlist.append(mainboardsys)
 		map(lambda x: outlist.append(x), lowsys)
 		return outlist
@@ -315,7 +316,6 @@ class dia():
 					self.schType,
 					sheetLst[self.pageN])
 
-
 	def getParameters (self):
 		#для вводного щита
 		#для электрической системы
@@ -323,13 +323,10 @@ class dia():
 						for x in dia.parToSet
 						if GetParVal(self.rvtSys, x) != None]
 
-
 	def setParameters (self):
 		for i,j in self.paramLst:
 			elem = self.diaInst
 			SetupParVal (elem, i, j)
-
-
 
 brdName = IN[0]
 createNewScheets = IN[1]
@@ -351,19 +348,27 @@ footers = list()
 for i, sys in enumerate(mainSystems):
 	#mainboardSys
 	brdCategory = mainBrd.Category.Id
+	
+	
+	#Is this system contains subsystems "Sammelschiene"?
 	elems = [elem for elem in sys.Elements]
 	lowbrd = elems[0]
 	if lowbrd.Category.Id == brdCategory:
 		brdCode = elem.LookupParameter("MC Panel Code").AsString()
+		#if No
+		if brdCode != brdName:
+			lowbrd = None
 	
 	if i == 0:
 	#System 0,0
 		diaList.append(dia(sys, 0, 0))
 	
 	#LowBoards systems
-	elif len(elems) == 1 and brdCode == brdName:
+	elif lowbrd:
+		#add main system to list
+		#diaList.append(dia(sys, 0, i))
+		#add lowsystems to list
 		lowSystems = getSystems(lowbrd)
-		lowSystems.sort(key = lambda x: GetParVal(x, "RBS_ELEC_CIRCUIT_NUMBER")) 
 		for j, lowSys in enumerate(lowSystems):
 			diaList.append(dia(lowSys, i, j))
 			#If it is the last system - create footer.
@@ -375,11 +380,14 @@ for i, sys in enumerate(mainSystems):
 
 	#Systems without boards
 	else:
-	 	diaList.append(dia(sys, 0, i))
+		diaList.append(dia(sys, 0, i))
 		#If it is the last system - create footer.
 		if i == len(mainSystems) - 1:
 				newFooter = dia(None, 0, 11)
 				footers.append(newFooter)
+
+#========Prepare model parameters========
+map(lambda x: x.getParameters(), diaList)
 
 #region "create pages"
 
@@ -451,18 +459,16 @@ map(lambda x: x.placeDiagramm(), headers)
 map(lambda x: x.placeDiagramm(), fillers)
 
 #========Set Parameters========
-#========Prepare model parameters========
-map(lambda x: x.getParameters(), diaList)
-#map(lambda x: x.setParameters(), diaList)
+map(lambda x: x.setParameters(), diaList)
 
 
-#endregion
+# #endregion
 
 #=========End transaction
 TransactionManager.Instance.TransactionTaskDone()
 
-#OUT = map(lambda x: [dia.coordList.index((x.location)), x.location, x.schType, x.pageN], fillers)
-OUT = map(lambda x: x.paramLst, diaList)
+OUT = map(lambda x: [dia.coordList.index((x.location)), x.pageN, x.schType, x.paramLst[0]], diaList)
+#OUT = map(lambda x: x.paramLst, diaList)
 #OUT = sheetLst
 #OUT = [x.schType for x in footers]
 #OUT = mainSystems
