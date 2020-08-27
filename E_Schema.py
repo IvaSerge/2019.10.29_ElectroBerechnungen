@@ -52,18 +52,17 @@ def GetParVal(elem, name):
 			value = param.AsValueString()
 	except:
 		pass
-
 	return value
 
 def SetupParVal(elem, name, pValue):
 	global doc
-	try:
-		elem.LookupParameter(name).Set(pValue)
-	except:
-		try:
-			bip = GetBuiltInParam(name)
-			elem.get_Parameter(bip).Set(pValue)
-		except: pass
+	#Параметр пользовательский
+	param = elem.LookupParameter(name)
+	#параметр не найден. Надо проверить, есть ли такой же встроенный параметр
+	if param == None:
+		param = elem.get_Parameter(GetBuiltInParam(name))
+	if param:
+		param.Set(pValue)
 	return elem
 
 def getSystems (_brd):
@@ -72,7 +71,12 @@ def getSystems (_brd):
 	if lowsys:
 		outlist = list()
 		lowsysId = [i.Id for i in lowsys]
-		mainboardsys = [i for i in allsys if i.Id not in lowsysId][0]
+		mainboardsysLst = [i for i in allsys if i.Id not in lowsysId]
+		if len(mainboardsysLst) == 0:
+			raise ValueError("Board not connectet")
+		else:
+			mainboardsys = mainboardsysLst[0]
+		
 		lowsys = [i for i in allsys if i.Id in lowsysId]
 		lowsys.sort(key = lambda x: float(GetParVal(x, "RBS_ELEC_CIRCUIT_NUMBER")))
 		outlist.append(mainboardsys)
@@ -188,7 +192,7 @@ class dia():
 		except:
 			raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
 		
-		self.__getLocation__()		
+		self.__getLocation__()
 
 	def __getType__ (self):
 		global mainBrd
@@ -206,12 +210,12 @@ class dia():
 			schType = mainBrd.LookupParameter("E_Sch_FamilyType").AsString()
 
 		#for header
-		elif  not(self.rvtSys) and sysi == 10:
+		elif not(self.rvtSys) and sysi == 10:
 			schFamily = "E_SCH_Filler"
 			schType = "Filler_Start"
 		
 		#for footer
-		elif  not(self.rvtSys) and sysi == 11:
+		elif not(self.rvtSys) and sysi == 11:
 			#find board schema type
 			boardDia = [x.schType for x in diaList
 						if x.brdIndex == brdi][0]
@@ -219,7 +223,7 @@ class dia():
 			schType = boardDia.LookupParameter("E_Sch_FamilyType").AsString()
 
 		#for filler
-		elif  not(self.rvtSys) and sysi < 10:
+		elif not(self.rvtSys) and sysi < 10:
 			#find board schema type
 			schFamily = "E_SCH_Filler"
 			schType = "Filler_1modul"	
@@ -241,6 +245,9 @@ class dia():
 		global dialist
 		brdi = self.brdIndex
 		sysi = self.sysIndex
+		if self.schType == None:
+			raise ValueError("No 2D diagram was found for {},{}".format(brdi, sysi))
+		
 		try:
 			modulSize = self.schType.LookupParameter("E_PositionsHeld").AsInteger()
 		except:
@@ -252,7 +259,7 @@ class dia():
 			#if it is not the first board - create page break
 			if brdi == 0:
 				dia.currentPos = 1
-				dia.currentPage += 1			
+				dia.currentPage += 1
 		 		self.location = dia.coordList[dia.currentPos]
 			self.pageN = dia.currentPage
 			dia.currentPos += modulSize
@@ -344,42 +351,43 @@ mainSystems.sort(key = lambda x: GetParVal(x, "RBS_ELEC_CIRCUIT_NUMBER"))
 
 diaList = list()
 footers = list()
+outlist = list()
+
 #create tree of electircal systems and initiate dia class
 for i, sys in enumerate(mainSystems):
-	#mainboardSys
 	brdCategory = mainBrd.Category.Id
-	
-	
 	#Is this system contains subsystems "Sammelschiene"?
+	lowbrd = None
 	elems = [elem for elem in sys.Elements]
-	lowbrd = elems[0]
-	if lowbrd.Category.Id == brdCategory:
+	elem = elems[0]
+	#is it electrical board?
+	if elem.Category.Id == brdCategory:
 		brdCode = elem.LookupParameter("MC Panel Code").AsString()
-		#if No
-		if brdCode != brdName:
-			lowbrd = None
-	
+		#is this board marked as subboard?
+		if brdCode == brdName:
+			lowbrd = elem
+
 	if i == 0:
 	#System 0,0
 		diaList.append(dia(sys, 0, 0))
+		outlist.append(str(0)+","+str(i))
 	
 	#LowBoards systems
 	elif lowbrd:
-		#add main system to list
-		#diaList.append(dia(sys, 0, i))
-		#add lowsystems to list
 		lowSystems = getSystems(lowbrd)
 		for j, lowSys in enumerate(lowSystems):
+			outlist.append(str(i)+","+str(j))
 			diaList.append(dia(lowSys, i, j))
 			#If it is the last system - create footer.
-			#if j == len(lowSystems) - 1:
-			#	newFooter = dia(None, i, 11)
-			#	#check if we need footer
-			#	if newFooter.location:
-			#		footers.append(newFooter)
+			if j == len(lowSystems) - 1:
+				newFooter = dia(None, i, 11)
+				#check if we need footer
+				#if newFooter.location:
+				footers.append(newFooter)
 
 	#Systems without boards
 	else:
+		outlist.append(str(0)+","+str(i))
 		diaList.append(dia(sys, 0, i))
 		#If it is the last system - create footer.
 		if i == len(mainSystems) - 1:
@@ -405,13 +413,13 @@ for page in range(1, pages+1):
 						if x.pageN == page][-1]
 	fillersOnPage = [dia(None, page, x) 
 					for x in range(lastPageIndex + 1, 10)]
-	map(lambda x: fillers.append(x), fillersOnPage)					
-	
+	map(lambda x: fillers.append(x), fillersOnPage)
+
 #get TitleBlocks
 titleblatt = getByCatAndStrParam(
- 		BuiltInCategory.OST_TitleBlocks,
- 		BuiltInParameter.SYMBOL_NAME_PARAM,
- 		"WSP_Plankopf_Shema_Titelblatt", True)[0]
+		BuiltInCategory.OST_TitleBlocks,
+		BuiltInParameter.SYMBOL_NAME_PARAM,
+		"WSP_Plankopf_Shema_Titelblatt", True)[0]
 
 #get schemaPlankopf
 shemaPlankopf = getByCatAndStrParam(
@@ -461,15 +469,10 @@ map(lambda x: x.placeDiagramm(), fillers)
 #========Set Parameters========
 map(lambda x: x.setParameters(), diaList)
 
-
-# #endregion
+#endregion
 
 #=========End transaction
 TransactionManager.Instance.TransactionTaskDone()
 
-OUT = map(lambda x: [dia.coordList.index((x.location)), x.pageN, x.schType, x.paramLst[0]], diaList)
-#OUT = map(lambda x: x.paramLst, diaList)
-#OUT = sheetLst
-#OUT = [x.schType for x in footers]
-#OUT = mainSystems
-#OUT = mainBrd.LookupParameter("E_Sch_Family").AsString()
+OUT = map(lambda x: ["{},{}".format(x.brdIndex, x.sysIndex), x.rvtSys, x.schType, dia.coordList.index((x.location)), x.pageN], diaList)
+#OUT = existingSheets
