@@ -327,12 +327,13 @@ class dia():
 		#для вводного щита
 		#для электрической системы
 		self.paramLst = [[x, GetParVal(self.rvtSys, x)]
-						for x in dia.parToSet
-						if GetParVal(self.rvtSys, x) != None]
+						for x in dia.parToSet]
 
 	def setParameters (self):
 		for i,j in self.paramLst:
 			elem = self.diaInst
+			if j == None:
+				j = " "
 			SetupParVal (elem, i, j)
 
 brdName = IN[0]
@@ -347,7 +348,6 @@ mainBrd = getByCatAndStrParam(
 		brdName, False)[0]
 
 mainSystems = [i for i in getSystems(mainBrd)]
-mainSystems.sort(key = lambda x: GetParVal(x, "RBS_ELEC_CIRCUIT_NUMBER")) 
 
 diaList = list()
 footers = list()
@@ -462,7 +462,7 @@ if createNewScheets == True:
 
 #========Place diagramms========
 map(lambda x: x.placeDiagramm(), diaList)
-map(lambda x: x.placeDiagramm(), footers)
+# map(lambda x: x.placeDiagramm(), footers)
 map(lambda x: x.placeDiagramm(), headers)
 map(lambda x: x.placeDiagramm(), fillers)
 
@@ -475,4 +475,4 @@ map(lambda x: x.setParameters(), diaList)
 TransactionManager.Instance.TransactionTaskDone()
 
 OUT = map(lambda x: ["{},{}".format(x.brdIndex, x.sysIndex), x.rvtSys, x.schType, dia.coordList.index((x.location)), x.pageN], diaList)
-#OUT = existingSheets
+#OUT = mainSystems
