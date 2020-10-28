@@ -144,7 +144,7 @@ def getTypeByCatFamType (_bic, _fam, _type):
 	
 	return elem
 
-def create_dia_by_board_Name(_brd_name):
+def create_dia_by_board_Name(_brd_name, _brdLevel=0):
 	"""
 	 Creates list of diagramm objects for _brd_name
 
@@ -153,20 +153,31 @@ def create_dia_by_board_Name(_brd_name):
 	 function would be called for subboard.
 	 :in:
 	 	_brd_name - str Board name
-	 
+	 	_brdLevel - current level of the board. 
+		 			_brdLevel = 0 - main board
+					_brdLevel = n, n > 0 - level of current subboard.
+					_brdLevel can be increased only with step += 1
+
 	 :return:
 		every new diagramm object would be appended to
 		the flat list.
 	"""
+	global doc
+	outlist = list()
+
 	#get board by name
 	brd_instance = getByCatAndStrParam(
 		BuiltInCategory.OST_ElectricalEquipment,
 		BuiltInParameter.RBS_ELEC_PANEL_NAME,
 		_brd_name, False)[0]
 	
+	brd_bic = BuiltInCategory.OST_ElectricalEquipment
+	brd_cat = Autodesk.Revit.DB.Category.GetCategory(
+						doc, ElementId(brd_bic)).Id
+	
 	brd_circuits = [i for i in getSystems(brd_instance)]
 	
-	return brd_circuits
+	return brd_instance.Category.Id == brd_cat
 	# endregion 	
 
 class dia():
@@ -176,8 +187,7 @@ class dia():
 
 	currentPage = 0
 	currentPos = 0
-	subBoardObj = None
-
+	
 	#coordinates of points on scheet
 	coordList = list()
 	coordList.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
@@ -203,7 +213,8 @@ class dia():
 	parToSet.append("E_Stromkreisprefix")
 	#endgerion
 
-	def __init__ (self, _rvtSys, _brdIndex, _sysIndex):
+	def __init__ (self, _rvtSys, _brdIndex, _sysIndex, _brdLevel):
+		self.brdLevel = _sysIndex
 		self.brdIndex = _brdIndex
 		self.sysIndex = _sysIndex
 		self.rvtSys = _rvtSys
@@ -370,14 +381,6 @@ footers = list()
 outlist = list()
 
 diaList = create_dia_by_board_Name(brdName)
-
-# #get mainBrd by name
-# mainBrd = getByCatAndStrParam(
-# 		BuiltInCategory.OST_ElectricalEquipment,
-# 		BuiltInParameter.RBS_ELEC_PANEL_NAME,
-# 		brdName, False)[0]
-
-# mainSystems = [i for i in getSystems(mainBrd)]
 
 # #create tree of electircal systems and initiate dia class
 # for i, sys in enumerate(mainSystems):
