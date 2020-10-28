@@ -164,7 +164,9 @@ def create_dia_by_board_Name(_brd_name):
 		BuiltInParameter.RBS_ELEC_PANEL_NAME,
 		_brd_name, False)[0]
 	
-	return brd_instance
+	brd_circuits = [i for i in getSystems(brd_instance)]
+	
+	return brd_circuits
 	# endregion 	
 
 class dia():
