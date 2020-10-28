@@ -151,7 +151,7 @@ class dia():
 	currentPage = 0
 	currentPos = 0
 	subBoardObj = None
-		
+
 	#coordinates of points on scheet
 	coordList = list()
 	coordList.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
@@ -379,20 +379,20 @@ for i, sys in enumerate(mainSystems):
 			outlist.append(str(i)+","+str(j))
 			diaList.append(dia(lowSys, i, j))
 			#If it is the last system - create footer.
-			if j == len(lowSystems) - 1:
-				newFooter = dia(None, i, 11)
+			#if j == len(lowSystems) - 1:
+				#newFooter = dia(None, i, 11)
 				#check if we need footer
 				#if newFooter.location:
-				footers.append(newFooter)
+				#footers.append(newFooter)
 
 	#Systems without boards
 	else:
 		outlist.append(str(0)+","+str(i))
 		diaList.append(dia(sys, 0, i))
 		#If it is the last system - create footer.
-		if i == len(mainSystems) - 1:
-				newFooter = dia(None, 0, 11)
-				footers.append(newFooter)
+		#if i == len(mainSystems) - 1:
+				#newFooter = dia(None, 0, 11)
+				#footers.append(newFooter)
 
 #========Prepare model parameters========
 map(lambda x: x.getParameters(), diaList)
