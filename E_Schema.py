@@ -196,9 +196,9 @@ def create_dia_by_board_Name(_brd_name, _brd_sys_list=[]):
 	if not(brd_sys_list):
 		brd_sys_list.append("1")
 
-	# brd_bic = BuiltInCategory.OST_ElectricalEquipment
-	# brd_cat = Autodesk.Revit.DB.Category.GetCategory(
-	# 	doc, ElementId(brd_bic)).Id
+	brd_bic = BuiltInCategory.OST_ElectricalEquipment
+	brd_cat = Autodesk.Revit.DB.Category.GetCategory(
+		doc, ElementId(brd_bic)).Id
 	brd_circuits = getSystems(brd_instance)[1]
 
 	sys_upper_index = brd_sys_list[-1]
@@ -208,21 +208,22 @@ def create_dia_by_board_Name(_brd_name, _brd_sys_list=[]):
 			"RBS_ELEC_CIRCUIT_NUMBER")
 		circuit_index = sys_upper_index + "." + circuit_number
 		brd_sys_list.append(circuit_index)
-	# check if circuit contains subboard
 
-	# create tree of electircal systems and initiate dia class
-	# for i, sys in enumerate(brd_circuits):
-	# 	brdCategory = mainBrd.Category.Id
-	# 	#Is this system contains subsystems "Sammelschiene"?
-	# 	lowbrd = None
-	# 	elems = [elem for elem in sys.Elements]
-	# 	elem = elems[0]
-	# 	#is it electrical board?
-	# 	if elem.Category.Id == brdCategory:
-	# 		brdCode = elem.LookupParameter("MC Panel Code").AsString()
-	# 		#is this board marked as subboard?
-	# 		if brdCode == brdName:
-	# 			lowbrd = elem
+		# check if circuit contains subboard
+		subboard = None
+		elems = [elem for elem in circuit.Elements]
+
+		# only 1 board in circuit allowd
+		# it is ehought to check first element
+		elem = elems[0]
+		elem_cat = elem.Category.Id
+		elem_panel_code = getParVal(elem, "MC Panel Code")
+		check_cat = elem_cat == brd_cat
+		check_param = elem_panel_code == _brd_name
+
+		if check_cat and check_param:
+			subboard = elem
+			brd_sys_list.append(subboard)
 
 	return brd_sys_list
 # endregion
