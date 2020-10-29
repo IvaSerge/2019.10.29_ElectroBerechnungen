@@ -152,9 +152,9 @@ def create_dia_by_board_Name(_brd_name, _brdLevel=0):
 	 If to the board other subboards is connected, then
 	 function would be called for subboard.
 	 :in:
-	 	_brd_name - str Board name
-	 	_brdLevel - current level of the board. 
-		 			_brdLevel = 0 - main board
+		_brd_name - str Board name
+		_brdLevel - current level of the board. 
+					_brdLevel = 0 - main board
 					_brdLevel = n, n > 0 - level of current subboard.
 					_brdLevel can be increased only with step += 1
 
@@ -178,7 +178,7 @@ def create_dia_by_board_Name(_brd_name, _brdLevel=0):
 	brd_circuits = [i for i in getSystems(brd_instance)]
 	
 	return brd_instance.Category.Id == brd_cat
-	# endregion 	
+	# endregion
 
 class dia():
 	"""Diagramm class"""
