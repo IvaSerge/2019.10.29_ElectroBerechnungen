@@ -123,7 +123,6 @@ def getByCatAndStrParam(_bic, _bip, _val, _isType):
 			WhereElementIsNotElementType().\
 			WherePasses(filter).\
 			ToElements()
-
 	return elem
 
 
@@ -147,8 +146,8 @@ def getTypeByCatFamType(_bic, _fam, _type):
 		WhereElementIsElementType().\
 		WherePasses(filter).\
 		FirstElement()
-
 	return elem
+
 # endregion
 
 
