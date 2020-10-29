@@ -77,8 +77,8 @@ def getSystems(_brd):
 
 		return:
 		list(1, 2) where:
-		1 - main electrical circuit
-		2 - list of connectet low circuits
+		1 - feeder
+		2 - list of branch systems
 	"""
 	brd_name = getParVal(_brd, "RBS_ELEC_PANEL_NAME")
 	board_all_systems = [i for i in _brd.MEPModel.ElectricalSystems]
@@ -97,18 +97,9 @@ def getSystems(_brd):
 		key=lambda x:
 		float(getParVal(x, "RBS_ELEC_CIRCUIT_NUMBER")))
 	branch_systems_id = [i.Id for i in board_branch_systems]
-
 	board_feeder = [
 		i for i in board_all_systems
 		if i.Id not in branch_systems_id][0]
-
-	# # Filtering out Feeder line from list of all circuits
-	# if board_branch_systems:
-	# 	# branch_circuits_id = [i.Id for i in board_branch_systems]
-	# 	for circuit in board_all_systems:
-	# 		if circuit not in board_branch_systems:
-	# 			board_feeder = circuit
-	# 			break
 	return board_feeder, board_branch_systems
 
 
@@ -189,7 +180,7 @@ def create_dia_by_board_Name(_brd_name, _brd_sys_list=[]):
 		the flat list.
 	"""
 	global doc
-
+	brd_sys_list = _brd_sys_list
 	# get board by name
 	try:
 		brd_instance = getByCatAndStrParam(
@@ -201,10 +192,23 @@ def create_dia_by_board_Name(_brd_name, _brd_sys_list=[]):
 			"Board \"%s\" not found "
 			% _brd_name)
 
+	# check if it is feeder of main board
+	if not(brd_sys_list):
+		brd_sys_list.append("1")
+
 	# brd_bic = BuiltInCategory.OST_ElectricalEquipment
 	# brd_cat = Autodesk.Revit.DB.Category.GetCategory(
 	# 	doc, ElementId(brd_bic)).Id
-	brd_circuits = getSystems(brd_instance)
+	brd_circuits = getSystems(brd_instance)[1]
+
+	sys_upper_index = brd_sys_list[-1]
+	for circuit in brd_circuits:
+		circuit_number = getParVal(
+			circuit,
+			"RBS_ELEC_CIRCUIT_NUMBER")
+		circuit_index = sys_upper_index + "." + circuit_number
+		brd_sys_list.append(circuit_index)
+	# check if circuit contains subboard
 
 	# create tree of electircal systems and initiate dia class
 	# for i, sys in enumerate(brd_circuits):
@@ -220,7 +224,7 @@ def create_dia_by_board_Name(_brd_name, _brd_sys_list=[]):
 	# 		if brdCode == brdName:
 	# 			lowbrd = elem
 
-	return brd_circuits
+	return brd_sys_list
 # endregion
 
 
