@@ -70,25 +70,46 @@ def setParVal(elem, name, pValue):
 
 
 def getSystems(_brd):
-	allsys = _brd.MEPModel.ElectricalSystems
-	lowsys = _brd.MEPModel.AssignedElectricalSystems
-	if lowsys:
-		outlist = list()
-		lowsysId = [i.Id for i in lowsys]
-		mainboardsysLst = [i for i in allsys if i.Id not in lowsysId]
-		if len(mainboardsysLst) == 0:
-			raise ValueError("Board not connectet")
-		else:
-			mainboardsys = mainboardsysLst[0]
+	"""Get all systems of electrical board.
 
-		lowsys = [i for i in allsys if i.Id in lowsysId]
-		lowsys.sort(key=lambda x:
-					float(getParVal(x, "RBS_ELEC_CIRCUIT_NUMBER")))
-		outlist.append(mainboardsys)
-		map(lambda x: outlist.append(x), lowsys)
-		return outlist
+		args:
+		_brd - electrical board FamilyInstance
+
+		return:
+		list(1, 2) where:
+		1 - main electrical circuit
+		2 - list of connectet low circuits
+	"""
+	brd_name = getParVal(_brd, "RBS_ELEC_PANEL_NAME")
+	board_all_systems = [i for i in _brd.MEPModel.ElectricalSystems]
+	board_branch_systems = [i for i in _brd.MEPModel.AssignedElectricalSystems]
+
+	if not(board_all_systems):
+		raise ValueError("Board \"%s\" have no systems" % brd_name)
+	elif not(board_branch_systems):
+		raise ValueError("Board \"%s\" have no branch systems" % brd_name)
+	elif len(board_branch_systems) == len(board_all_systems):
+		raise ValueError("Board \"%s\" have no feeder" % brd_name)
 	else:
-		return list(allsys)
+		pass
+
+	board_branch_systems.sort(
+		key=lambda x:
+		float(getParVal(x, "RBS_ELEC_CIRCUIT_NUMBER")))
+	branch_systems_id = [i.Id for i in board_branch_systems]
+
+	board_feeder = [
+		i for i in board_all_systems
+		if i.Id not in branch_systems_id][0]
+
+	# # Filtering out Feeder line from list of all circuits
+	# if board_branch_systems:
+	# 	# branch_circuits_id = [i.Id for i in board_branch_systems]
+	# 	for circuit in board_all_systems:
+	# 		if circuit not in board_branch_systems:
+	# 			board_feeder = circuit
+	# 			break
+	return board_feeder, board_branch_systems
 
 
 def setPageParam(_lst):
@@ -150,47 +171,62 @@ def getTypeByCatFamType(_bic, _fam, _type):
 	return elem
 
 
-def create_dia_by_board_Name(_brd_name, _brdLevel=0):
+def create_dia_by_board_Name(_brd_name, _brd_sys_list=[]):
 	"""
 	Creates list of diagramm objects for _brd_name
 
 	The function is recursive.
 	If to the board other subboards is connected, then
 	function would be called for subboard.
-	:in:
+
+	:attrubutes:
 		_brd_name - str Board name
-		_brdLevel - current level of the board.
-					_brdLevel = 0 - main board
-					_brdLevel = n, n > 0 - level of current subboard.
-					_brdLevel can be increased only with step += 1
+		_brd_sys_list - current tree of the systems
+			if list is empty - it is the main board
 
 	:return:
 		every new diagramm object would be appended to
 		the flat list.
 	"""
 	global doc
-	# outlist = list()
 
 	# get board by name
-	brd_instance = getByCatAndStrParam(
-		BuiltInCategory.OST_ElectricalEquipment,
-		BuiltInParameter.RBS_ELEC_PANEL_NAME,
-		_brd_name, False)[0]
+	try:
+		brd_instance = getByCatAndStrParam(
+			BuiltInCategory.OST_ElectricalEquipment,
+			BuiltInParameter.RBS_ELEC_PANEL_NAME,
+			_brd_name, False)[0]
+	except ValueError:
+		raise ValueError(
+			"Board \"%s\" not found "
+			% _brd_name)
 
-	brd_bic = BuiltInCategory.OST_ElectricalEquipment
-	brd_cat = Autodesk.Revit.DB.Category.GetCategory(
-						doc, ElementId(brd_bic)).Id
+	# brd_bic = BuiltInCategory.OST_ElectricalEquipment
+	# brd_cat = Autodesk.Revit.DB.Category.GetCategory(
+	# 	doc, ElementId(brd_bic)).Id
+	brd_circuits = getSystems(brd_instance)
 
-	# brd_circuits = [i for i in getSystems(brd_instance)]
+	# create tree of electircal systems and initiate dia class
+	# for i, sys in enumerate(brd_circuits):
+	# 	brdCategory = mainBrd.Category.Id
+	# 	#Is this system contains subsystems "Sammelschiene"?
+	# 	lowbrd = None
+	# 	elems = [elem for elem in sys.Elements]
+	# 	elem = elems[0]
+	# 	#is it electrical board?
+	# 	if elem.Category.Id == brdCategory:
+	# 		brdCode = elem.LookupParameter("MC Panel Code").AsString()
+	# 		#is this board marked as subboard?
+	# 		if brdCode == brdName:
+	# 			lowbrd = elem
 
-	return brd_instance.Category.Id == brd_cat
-	# endregion
+	return brd_circuits
+# endregion
 
 
 class dia():
 	"""Diagramm class"""
-
-	# region "class varaibles"
+# region "class varaibles"
 
 	currentPage = 0
 	currentPos = 0
@@ -218,9 +254,10 @@ class dia():
 	parToSet.append("CBT:CIR_Schutztyp")
 	parToSet.append("CBT:CIR_Elektrischen Schlag")
 	parToSet.append("E_Stromkreisprefix")
-	# endgerion
 
-	def __init__(self, _rvtSys, _brdIndex, _sysIndex, _brdLevel):
+# endgerion
+
+	def __init__(self, _rvtSys, _brdIndex, _sysIndex, _brd_lvl):
 		self.brdLevel = _sysIndex
 		self.brdIndex = _brdIndex
 		self.sysIndex = _sysIndex
@@ -260,8 +297,9 @@ class dia():
 		# for footer
 		elif not(self.rvtSys) and sysi == 11:
 			# find board schema type
-			boardDia = [x.schType for x in diaList
-						if x.brdIndex == brdi][0]
+			boardDia = [
+				x.schType for x in diaList
+				if x.brdIndex == brdi][0]
 			schFamily = boardDia.LookupParameter("E_Sch_Family").AsString()
 			schType = boardDia.LookupParameter("E_Sch_FamilyType").AsString()
 
@@ -280,9 +318,9 @@ class dia():
 		else:
 			pass
 		tp = getTypeByCatFamType(
-				BuiltInCategory.OST_GenericAnnotation,
-				schFamily,
-				schType)
+			BuiltInCategory.OST_GenericAnnotation,
+			schFamily,
+			schType)
 		return tp
 
 	def __getLocation(self):
@@ -316,18 +354,21 @@ class dia():
 
 		# Footer
 		elif sysi == 11 and not(self.rvtSys):
-			lastDia = [x.schType for x in diaList
-						if x.brdIndex == brdi][-1]
+			lastDia = [
+				x.schType for x in diaList
+				if x.brdIndex == brdi][-1]
 			previousModulSize = lastDia.LookupParameter("E_PositionsHeld").AsInteger()
-			lastIndex = [dia.coordList.index((x.location)) for x in diaList
-						if x.brdIndex == brdi][-1]
+			lastIndex = [
+				dia.coordList.index((x.location)) for x in diaList
+				if x.brdIndex == brdi][-1]
 			footIndex = lastIndex + previousModulSize
 
 			# enought space for Footer
 			if footIndex <= 10:
 				self.location = dia.coordList[footIndex]
-				self.pageN = max([x.pageN for x in diaList
-								if x.brdIndex == brdi])
+				self.pageN = max([
+					x.pageN for x in diaList
+					if x.brdIndex == brdi])
 				dia.currentPos += modulSize
 
 			else:
@@ -364,15 +405,15 @@ class dia():
 		global doc
 		global sheetLst
 		self.diaInst = doc.Create.NewFamilyInstance(
-					self.location,
-					self.schType,
-					sheetLst[self.pageN])
+			self.schType,
+			sheetLst[self.pageN])
 
 	def getParameters(self):
 		# для вводного щита
 		# для электрической системы
-		self.paramLst = [[x, getParVal(self.rvtSys, x)]
-						for x in dia.parToSet]
+		self.paramLst = [
+			[x, getParVal(self.rvtSys, x)]
+			for x in dia.parToSet]
 
 	def setParameters(self):
 		for i, j in self.paramLst:
