@@ -194,11 +194,7 @@ class dia():
 		self.diaInst = None
 		self.paramLst = list()
 
-		try:
-			self.schType = self.__getType__()
-		except:
-			raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
-
+		self.schType = self.__getType__()
 		self.__getLocation__()
 
 	def __getType__(self):
@@ -241,13 +237,17 @@ class dia():
 			# diagramm is writen in electrical system parameter
 			schFamily = self.rvtSys.LookupParameter("E_Sch_Family").AsString()
 			schType = self.rvtSys.LookupParameter("E_Sch_FamilyType").AsString()
-
 		else:
 			pass
-		tp = getTypeByCatFamType(
-			BuiltInCategory.OST_GenericAnnotation,
-			schFamily,
-			schType)
+
+		try:
+			tp = getTypeByCatFamType(
+				BuiltInCategory.OST_GenericAnnotation,
+				schFamily,
+				schType)
+		except:
+			raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
+
 		return tp
 
 	def __getLocation__(self):
@@ -384,7 +384,7 @@ for i, el_sys in enumerate(mainSystems):
 
 	if i == 0:
 		# System 0,0
-		diaList.append(dia(sys, 0, 0))
+		diaList.append(dia(el_sys, 0, 0))
 		outlist.append(str(0) + "," + str(i))
 
 	# LowBoards systems
@@ -403,7 +403,8 @@ for i, el_sys in enumerate(mainSystems):
 	# Systems without boards
 	else:
 		outlist.append(str(0) + "," + str(i))
-		diaList.append(dia(sys, 0, i))
+		outlist.append(str(0) + "," + str(i))
+		diaList.append(dia(el_sys, 0, i))
 		# If it is the last system - create footer.
 		# if i == len(mainSystems) - 1:
 				# newFooter = dia(None, 0, 11)
