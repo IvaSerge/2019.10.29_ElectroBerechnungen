@@ -81,17 +81,16 @@ def getSystems(_brd):
 		2 - list of branch systems
 	"""
 	brd_name = getParVal(_brd, "RBS_ELEC_PANEL_NAME")
-	board_all_systems = [i for i in _brd.MEPModel.ElectricalSystems]
-	board_branch_systems = [i for i in _brd.MEPModel.AssignedElectricalSystems]
-
-	if not(board_all_systems):
-		raise ValueError("Board \"%s\" have no systems" % brd_name)
-	elif not(board_branch_systems):
+	try:
+		board_all_systems = [i for i in _brd.MEPModel.ElectricalSystems]
+	except TypeError:
+		raise TypeError("Board \"%s\" have no systems" % brd_name)
+	try:
+		board_branch_systems = [i for i in _brd.MEPModel.AssignedElectricalSystems]
+	except TypeError:
 		raise ValueError("Board \"%s\" have no branch systems" % brd_name)
-	elif len(board_branch_systems) == len(board_all_systems):
+	if len(board_branch_systems) == len(board_all_systems):
 		raise ValueError("Board \"%s\" have no feeder" % brd_name)
-	else:
-		pass
 
 	board_branch_systems.sort(
 		key=lambda x:
@@ -162,7 +161,7 @@ def getTypeByCatFamType(_bic, _fam, _type):
 	return elem
 
 
-def create_dia_by_board_Name(_brd_name, _brd_sys_list=[]):
+def create_dia_by_board_Name(_brd_name, _brd_sys_index=0):
 	"""
 	Creates list of diagramm objects for _brd_name
 
@@ -180,8 +179,8 @@ def create_dia_by_board_Name(_brd_name, _brd_sys_list=[]):
 		the flat list.
 	"""
 	global doc
-	brd_sys_list = _brd_sys_list
-	# get board by name
+	brd_sys_list = list()
+
 	try:
 		brd_instance = getByCatAndStrParam(
 			BuiltInCategory.OST_ElectricalEquipment,
@@ -193,24 +192,26 @@ def create_dia_by_board_Name(_brd_name, _brd_sys_list=[]):
 			% _brd_name)
 
 	# check if it is feeder of main board
-	if not(brd_sys_list):
+	if not(_brd_sys_index):
+		# brd_sys_list.append("1")
+		sys_upper_index = 1
 		brd_sys_list.append("1")
+	else:
+		sys_upper_index = _brd_sys_index + 1
 
 	brd_bic = BuiltInCategory.OST_ElectricalEquipment
 	brd_cat = Autodesk.Revit.DB.Category.GetCategory(
 		doc, ElementId(brd_bic)).Id
 	brd_circuits = getSystems(brd_instance)[1]
 
-	sys_upper_index = brd_sys_list[-1]
 	for circuit in brd_circuits:
 		circuit_number = getParVal(
 			circuit,
 			"RBS_ELEC_CIRCUIT_NUMBER")
-		circuit_index = sys_upper_index + "." + circuit_number
+		circuit_index = str(sys_upper_index) + "." + circuit_number
 		brd_sys_list.append(circuit_index)
 
 		# check if circuit contains subboard
-		subboard = None
 		elems = [elem for elem in circuit.Elements]
 
 		# only 1 board in circuit allowd
@@ -222,8 +223,12 @@ def create_dia_by_board_Name(_brd_name, _brd_sys_list=[]):
 		check_param = elem_panel_code == _brd_name
 
 		if check_cat and check_param:
-			subboard = elem
-			brd_sys_list.append(subboard)
+			subboard_name = getParVal(elem, "RBS_ELEC_PANEL_NAME")
+			subboard_systems = create_dia_by_board_Name(
+				subboard_name,
+				sys_upper_index)
+			for el_sys in subboard_systems:
+				brd_sys_list.append(el_sys)
 
 	return brd_sys_list
 # endregion
