@@ -224,8 +224,9 @@ class dia():
 		# for footer
 		elif not(self.rvtSys) and sysi == 11:
 			# find board schema type
-			boardDia = [x.schType for x in diaList
-						if x.brdIndex == brdi][0]
+			boardDia = [
+				x.schType for x in diaList
+				if x.brdIndex == brdi][0]
 			schFamily = boardDia.LookupParameter("E_Sch_Family").AsString()
 			schType = boardDia.LookupParameter("E_Sch_FamilyType").AsString()
 
@@ -244,9 +245,9 @@ class dia():
 		else:
 			pass
 		tp = getTypeByCatFamType(
-				BuiltInCategory.OST_GenericAnnotation,
-				schFamily,
-				schType)
+			BuiltInCategory.OST_GenericAnnotation,
+			schFamily,
+			schType)
 		return tp
 
 	def __getLocation__(self):
@@ -280,18 +281,21 @@ class dia():
 
 		# Footer
 		elif sysi == 11 and not(self.rvtSys):
-			lastDia = [x.schType for x in diaList
-						if x.brdIndex == brdi][-1]
+			lastDia = [
+				x.schType for x in diaList
+				if x.brdIndex == brdi][-1]
 			previousModulSize = lastDia.LookupParameter("E_PositionsHeld").AsInteger()
-			lastIndex = [dia.coordList.index((x.location)) for x in diaList
-						if x.brdIndex == brdi][-1]
+			lastIndex = [
+				dia.coordList.index((x.location)) for x in diaList
+				if x.brdIndex == brdi][-1]
 			footIndex = lastIndex + previousModulSize
 
 			# enought space for Footer
 			if footIndex <= 10:
 				self.location = dia.coordList[footIndex]
-				self.pageN = max([x.pageN for x in diaList
-								if x.brdIndex == brdi])
+				self.pageN = max([
+					x.pageN for x in diaList
+					if x.brdIndex == brdi])
 				dia.currentPos += modulSize
 
 			else:
@@ -328,15 +332,16 @@ class dia():
 		global doc
 		global sheetLst
 		self.diaInst = doc.Create.NewFamilyInstance(
-					self.location,
-					self.schType,
-					sheetLst[self.pageN])
+			self.location,
+			self.schType,
+			sheetLst[self.pageN])
 
 	def getParameters(self):
 		# для вводного щита
 		# для электрической системы
-		self.paramLst = [[x, GetParVal(self.rvtSys, x)]
-						for x in dia.parToSet]
+		self.paramLst = [[
+			x, GetParVal(self.rvtSys, x)]
+			for x in dia.parToSet]
 
 	def setParameters(self):
 		for i, j in self.paramLst:
@@ -353,9 +358,9 @@ outlist = list()
 
 # get mainBrd by name
 mainBrd = getByCatAndStrParam(
-			BuiltInCategory.OST_ElectricalEquipment,
-			BuiltInParameter.RBS_ELEC_PANEL_NAME,
-			brdName, False)[0]
+	BuiltInCategory.OST_ElectricalEquipment,
+	BuiltInParameter.RBS_ELEC_PANEL_NAME,
+	brdName, False)[0]
 
 mainSystems = [i for i in getSystems(mainBrd)]
 
@@ -419,30 +424,33 @@ headers = [dia(None, x, 10) for x in range(1, pages + 1)]
 # fillers for pages
 fillers = list()
 for page in range(1, pages + 1):
-	lastPageIndex = [dia.coordList.index((x.location)) for x in diaList
-						if x.pageN == page][-1]
-	fillersOnPage = [dia(None, page, x)
-						for x in range(lastPageIndex + 1, 10)]
+	lastPageIndex = [
+		dia.coordList.index((x.location)) for x in diaList
+		if x.pageN == page][-1]
+	fillersOnPage = [
+		dia(None, page, x)
+		for x in range(lastPageIndex + 1, 10)]
 	map(lambda x: fillers.append(x), fillersOnPage)
 
 # get TitleBlocks
 titleblatt = getByCatAndStrParam(
-				BuiltInCategory.OST_TitleBlocks,
-				BuiltInParameter.SYMBOL_NAME_PARAM,
-				"WSP_Plankopf_Shema_Titelblatt", True)[0]
+	BuiltInCategory.OST_TitleBlocks,
+	BuiltInParameter.SYMBOL_NAME_PARAM,
+	"WSP_Plankopf_Shema_Titelblatt", True)[0]
 
 # get schemaPlankopf
 shemaPlankopf = getByCatAndStrParam(
-				BuiltInCategory.OST_TitleBlocks,
-				BuiltInParameter.SYMBOL_NAME_PARAM,
-				"WSP_Plankopf_Shema", True)[0]
+	BuiltInCategory.OST_TitleBlocks,
+	BuiltInParameter.SYMBOL_NAME_PARAM,
+	"WSP_Plankopf_Shema", True)[0]
 
 # ========Find sheets
-existingSheets = [i for i in FilteredElementCollector(doc).
-			OfCategory(BuiltInCategory.OST_Sheets).
-			WhereElementIsNotElementType().
-			ToElements()
-			if i.LookupParameter("MC Panel Code").AsString() == brdName]
+existingSheets = [
+	i for i in FilteredElementCollector(doc).
+	OfCategory(BuiltInCategory.OST_Sheets).
+	WhereElementIsNotElementType().
+	ToElements()
+	if i.LookupParameter("MC Panel Code").AsString() == brdName]
 
 # =========Start transaction
 TransactionManager.Instance.EnsureInTransaction(doc)
@@ -466,7 +474,7 @@ if createNewScheets:
 	map(lambda x: doc.Delete(x.Id), existingSheets)
 	sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
 	map(lambda x: sheetLst.append(ViewSheet.Create(
-				doc, shemaPlankopf.Id)), range(pages))
+		doc, shemaPlankopf.Id)), range(pages))
 	map(lambda x: setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
 # ========Place diagramms========
