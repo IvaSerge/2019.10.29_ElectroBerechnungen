@@ -104,13 +104,13 @@ def getSystems(_brd):
 
 def setPageParam(_lst):
 	global doc
-	global brdName
+	global brd_name
 	page = _lst[0]
 	pName = _lst[1]
 	pNumber = _lst[2]
 	page.get_Parameter(BuiltInParameter.SHEET_NAME).Set(pName)
 	page.get_Parameter(BuiltInParameter.SHEET_NUMBER).Set(pNumber)
-	page.LookupParameter("MC Panel Code").Set(brdName)
+	page.LookupParameter("MC Panel Code").Set(brd_name)
 
 
 def getByCatAndStrParam(_bic, _bip, _val, _isType):
@@ -161,12 +161,12 @@ def getTypeByCatFamType(_bic, _fam, _type):
 	return elem
 
 
-def create_dia_by_board_Name(_brd_name, _brd_sys_index=0):
+def create_dia(_brd_name, _brd_sys_index=0):
 	"""
 	Creates list of diagramm objects for _brd_name
 
 	The function is recursive.
-	If to the board other subboards is connected, then
+	If to the board other subboards is connected, then`
 	function would be called for subboard.
 
 	:attrubutes:
@@ -193,9 +193,10 @@ def create_dia_by_board_Name(_brd_name, _brd_sys_index=0):
 
 	# check if it is feeder of main board
 	if not(_brd_sys_index):
-		# brd_sys_list.append("1")
+		sys_upper_index = 0
 		sys_upper_index = 1
-		brd_sys_list.append("1")
+		diagramm = dia(None, sys_upper_index)
+		brd_sys_list.append(diagramm)
 	else:
 		sys_upper_index = _brd_sys_index + 1
 
@@ -205,11 +206,8 @@ def create_dia_by_board_Name(_brd_name, _brd_sys_index=0):
 	brd_circuits = getSystems(brd_instance)[1]
 
 	for circuit in brd_circuits:
-		circuit_number = getParVal(
-			circuit,
-			"RBS_ELEC_CIRCUIT_NUMBER")
-		circuit_index = str(sys_upper_index) + "." + circuit_number
-		brd_sys_list.append(circuit_index)
+		diagramm = dia(circuit, sys_upper_index)
+		brd_sys_list.append(diagramm)
 
 		# check if circuit contains subboard
 		elems = [elem for elem in circuit.Elements]
@@ -224,12 +222,11 @@ def create_dia_by_board_Name(_brd_name, _brd_sys_index=0):
 
 		if check_cat and check_param:
 			subboard_name = getParVal(elem, "RBS_ELEC_PANEL_NAME")
-			subboard_systems = create_dia_by_board_Name(
+			subboard_dia_list = create_dia(
 				subboard_name,
 				sys_upper_index)
-			for el_sys in subboard_systems:
-				brd_sys_list.append(el_sys)
-
+			for subboard_dia in subboard_dia_list:
+				brd_sys_list.append(subboard_dia)
 	return brd_sys_list
 # endregion
 
@@ -267,24 +264,27 @@ class dia():
 
 # endgerion
 
-	def __init__(self, _rvtSys, _brdIndex, _sysIndex, _brd_lvl):
-		self.brdLevel = _sysIndex
-		self.brdIndex = _brdIndex
-		self.sysIndex = _sysIndex
-		self.rvtSys = _rvtSys
-		self.location = None
-		self.pageN = None
-		self.diaInst = None
+	def __init__(self, _rvtSys, _brd_lvl):
+		self.dia_level = _brd_lvl
+		if _rvtSys:
+			self.circuit_number = str(getParVal(
+				_rvtSys,
+				"RBS_ELEC_CIRCUIT_NUMBER"))
+		else:
+			self.circuit_number = None
 		self.paramLst = list()
+		if self.circuit_number:
+			self.dia_index = str(self.dia_level) + "." + self.circuit_number
+		else:
+			self.dia_index = str(self.dia_level)
 
-		try:
-			self.schType = self.__getType()
-		except:
-			raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
+		# try:
+		# 	self.schType = self.getType()
+		# except:
+		# 	raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
+		# self.__getLocation()
 
-		self.__getLocation()
-
-	def __getType(self):
+	def getType(self):
 		global mainBrd
 		global doc
 		global diaList
@@ -333,7 +333,7 @@ class dia():
 			schType)
 		return tp
 
-	def __getLocation(self):
+	def getLocation(self):
 		global dialist
 		brdi = self.brdIndex
 		sysi = self.sysIndex
@@ -433,15 +433,15 @@ class dia():
 			setParVal(elem, i, j)
 
 
-brdName = IN[0]
-createNewScheets = IN[1]
+brd_name = IN[0]
+create_scheets = IN[1]
 reload = IN[2]
 
 outlist = list()
 footers = list()
 outlist = list()
 
-diaList = create_dia_by_board_Name(brdName)
+diaList = create_dia(brd_name)
 
 # #create tree of electircal systems and initiate dia class
 # for i, sys in enumerate(mainSystems):
@@ -454,7 +454,7 @@ diaList = create_dia_by_board_Name(brdName)
 # 	if elem.Category.Id == brdCategory:
 # 		brdCode = elem.LookupParameter("MC Panel Code").AsString()
 # 		#is this board marked as subboard?
-# 		if brdCode == brdName:
+# 		if brdCode == brd_name:
 # 			lowbrd = elem
 
 # 	if i == 0:
@@ -491,8 +491,8 @@ diaList = create_dia_by_board_Name(brdName)
 # region "pages properties"
 
 # pages = max([x.pageN for x in diaList])
-# pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages+1)]
-# pageNameLst = [brdName] * (pages+1)
+# pageNumLst = [brd_name + "_" + str(n).zfill(3) for n in range(pages+1)]
+# pageNameLst = [brd_name] * (pages+1)
 
 # #========Initialaise dia class for Footers Headers and Fillers
 # headers = [dia(None, x, 10) for x in range(1, pages + 1)]
@@ -524,7 +524,7 @@ diaList = create_dia_by_board_Name(brdName)
 # 			WhereElementIsNotElementType().
 # 			ToElements()
 # 			if i.LookupParameter("MC Panel Code"
-# 			).AsString() == brdName]
+# 			).AsString() == brd_name]
 
 # endregion
 
@@ -533,7 +533,7 @@ TransactionManager.Instance.EnsureInTransaction(doc)
 
 # #========Create sheets========
 # sheetLst = list()
-# if createNewScheets == False:
+# if create_scheets == False:
 # 	sheetLst = existingSheets
 # 	elemsOnSheet = list()
 # 	#remove all instances on sheet
@@ -546,7 +546,7 @@ TransactionManager.Instance.EnsureInTransaction(doc)
 # 	typed_list = List[ElementId](elemsOnSheet)
 # 	doc.Delete(typed_list)
 
-# if createNewScheets == True:
+# if create_scheets == True:
 # 	map(lambda x:doc.Delete(x.Id), existingSheets)
 # 	sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
 # 	map(lambda x:sheetLst.append(ViewSheet.Create(
@@ -566,4 +566,5 @@ TransactionManager.Instance.EnsureInTransaction(doc)
 TransactionManager.Instance.TransactionTaskDone()
 
 # OUT = map(lambda x: ["{},{}".format(x.brdIndex, x.sysIndex), x.rvtSys, x.schType, dia.coordList.index((x.location)), x.pageN], diaList)
-OUT = diaList
+OUT = [x.dia_index for x in diaList]
+# OUT = diaList
