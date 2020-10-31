@@ -191,22 +191,20 @@ def create_dia(_brd_name, _brd_sys_index=0):
 			"Board \"%s\" not found "
 			% _brd_name)
 
+	brd_circuits_all = getSystems(brd_instance)
+	brd_feeder = brd_circuits_all[0]
+	brd_circuits = brd_circuits_all[1]
+
 	# check if it is feeder of main board
 	if not(_brd_sys_index):
-		sys_upper_index = 0
 		sys_upper_index = 1
-		diagramm = dia(None, sys_upper_index)
+		diagramm = dia(None, brd_feeder, "Feeder")
 		brd_sys_list.append(diagramm)
 	else:
 		sys_upper_index = _brd_sys_index + 1
 
-	brd_bic = BuiltInCategory.OST_ElectricalEquipment
-	brd_cat = Autodesk.Revit.DB.Category.GetCategory(
-		doc, ElementId(brd_bic)).Id
-	brd_circuits = getSystems(brd_instance)[1]
-
 	for circuit in brd_circuits:
-		diagramm = dia(circuit, sys_upper_index)
+		diagramm = dia(circuit, sys_upper_index, "Branch")
 		brd_sys_list.append(diagramm)
 
 		# check if circuit contains subboard
@@ -217,6 +215,9 @@ def create_dia(_brd_name, _brd_sys_index=0):
 		elem = elems[0]
 		elem_cat = elem.Category.Id
 		elem_panel_code = getParVal(elem, "MC Panel Code")
+		brd_bic = BuiltInCategory.OST_ElectricalEquipment
+		brd_cat = Autodesk.Revit.DB.Category.GetCategory(
+			doc, ElementId(brd_bic)).Id
 		check_cat = elem_cat == brd_cat
 		check_param = elem_panel_code == _brd_name
 
@@ -234,9 +235,6 @@ def create_dia(_brd_name, _brd_sys_index=0):
 class dia():
 	"""Diagramm class"""
 # region "class varaibles"
-
-	currentPage = 0
-	currentPos = 0
 
 	# coordinates of points on scheet
 	coordList = list()
@@ -264,74 +262,55 @@ class dia():
 
 # endgerion
 
-	def __init__(self, _rvtSys, _brd_lvl):
+	def __init__(self, _rvtSys, _brd_lvl, _description):
 		self.dia_level = _brd_lvl
+		self.dia_sys = _rvtSys
+		self.dia_description = _description
+		self.paramLst = list()
+
 		if _rvtSys:
 			self.circuit_number = str(getParVal(
 				_rvtSys,
 				"RBS_ELEC_CIRCUIT_NUMBER"))
 		else:
 			self.circuit_number = None
-		self.paramLst = list()
+
 		if self.circuit_number:
 			self.dia_index = str(self.dia_level) + "." + self.circuit_number
 		else:
 			self.dia_index = str(self.dia_level)
 
-		# try:
-		# 	self.schType = self.getType()
-		# except:
-		# 	raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
-		# self.__getLocation()
-
 	def getType(self):
-		global mainBrd
-		global doc
-		global diaList
-		brdi = self.brdIndex
-		sysi = self.sysIndex
-		schFamily = None
-		schType = None
+		# global mainBrd
+		# global doc
+		# global diaList
+		dia_sys = self.dia_sys
+		dia_description = self.dia_description
+		sch_family = None
+		sch_type = None
 
 		# for "Einspeisung" schema
 		# diagramm is writen in board parameter
-		if all([brdi == 0, sysi == 0]):
-			schFamily = mainBrd.LookupParameter("E_Sch_Family").AsString()
-			schType = mainBrd.LookupParameter("E_Sch_FamilyType").AsString()
-
-		# for header
-		elif not(self.rvtSys) and sysi == 10:
-			schFamily = "E_SCH_Filler"
-			schType = "Filler_Start"
-
-		# for footer
-		elif not(self.rvtSys) and sysi == 11:
-			# find board schema type
-			boardDia = [
-				x.schType for x in diaList
-				if x.brdIndex == brdi][0]
-			schFamily = boardDia.LookupParameter("E_Sch_Family").AsString()
-			schType = boardDia.LookupParameter("E_Sch_FamilyType").AsString()
-
-		# for filler
-		elif not(self.rvtSys) and sysi < 10:
-			# find board schema type
-			schFamily = "E_SCH_Filler"
-			schType = "Filler_1modul"
+		if dia_description == "Feeder":
+			sys_brd = dia_sys.BaseEquipment
+			sys_brd_tp = doc.GetElement(sys_brd.GetTypeId())
+			sch_family = sys_brd_tp.LookupParameter("E_Sch_Family").AsString()
+			sch_type = sys_brd_tp.LookupParameter("E_Sch_FamilyType").AsString()
 
 		# for "Electrical" schema
-		elif self.rvtSys:
+		elif dia_description == "Branch":
 			# diagramm is writen in electrical system parameter
-			schFamily = self.rvtSys.LookupParameter("E_Sch_Family").AsString()
-			schType = self.rvtSys.LookupParameter("E_Sch_FamilyType").AsString()
+			sch_family = self.dia_sys.LookupParameter("E_Sch_Family").AsString()
+			sch_type = self.dia_sys.LookupParameter("E_Sch_FamilyType").AsString()
 
 		else:
 			pass
-		tp = getTypeByCatFamType(
-			BuiltInCategory.OST_GenericAnnotation,
-			schFamily,
-			schType)
-		return tp
+
+		# tp = getTypeByCatFamType(
+		# 	BuiltInCategory.OST_GenericAnnotation,
+		# 	sch_family,
+		# 	sch_type)
+		return None
 
 	def getLocation(self):
 		global dialist
@@ -566,5 +545,5 @@ TransactionManager.Instance.EnsureInTransaction(doc)
 TransactionManager.Instance.TransactionTaskDone()
 
 # OUT = map(lambda x: ["{},{}".format(x.brdIndex, x.sysIndex), x.rvtSys, x.schType, dia.coordList.index((x.location)), x.pageN], diaList)
-OUT = [x.dia_index for x in diaList]
-# OUT = diaList
+# OUT = [x.dia_index for x in diaList]
+OUT = diaList[1].getType()
