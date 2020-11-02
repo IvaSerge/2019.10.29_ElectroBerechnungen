@@ -232,10 +232,42 @@ def create_dia(_brd_name, _brd_sys_index=0):
 # endregion
 
 
-class dia():
-	"""Diagramm class"""
+class dia:
+	"""
+		Electrical diagramm class
 
-# region "class varaibles"
+	:class properties:
+		parToSet - list()
+			parameters, that would be read from electrical system
+			and would be set to 2D diagramm instance
+
+	:instance properties:
+		dia_level - busbur level.
+			Main board - is lvl_1
+
+		self.dia_sys - Revit system
+
+		self.dia_description - text diagramm description
+			"Feeder" - diagramm for feeder
+			"Branch" - diagram for branch circuit
+			"Filler" - dummy lines
+			"Heater " - first 2D diagramm on the page
+			"Footer" - last 2D diagramm on the page
+
+		brd, self.brd_name - board that system connected
+
+		self.dia_index - readable adress of the system in system tree
+
+		self.tp - type of 2D diagramm to be placed on the page
+
+	:methods:
+		getType() - get Type of 2D diagramm.
+			read text parameters in Revit systems
+			find FamilyType in Revit
+
+		getParameters() - get parameters value from systems
+	"""
+
 	# coordinates of points on scheet
 	coordList = list()
 	coordList.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
@@ -260,15 +292,14 @@ class dia():
 	parToSet.append("CBT:CIR_Elektrischen Schlag")
 	parToSet.append("E_Stromkreisprefix")
 
-# endgerion
-
 	def __init__(self, _rvtSys, _brd_lvl, _description):
 		self.dia_level = _brd_lvl
 		self.dia_sys = _rvtSys
+		self.dia_description = _description
 		self.brd = None
 		self.brd_name = None
-		self.dia_description = _description
 		self.paramLst = list()
+		self.tp = None
 
 		if _description == "Branch":
 			self.circuit_number = str(getParVal(
@@ -317,15 +348,31 @@ class dia():
 				"Parameters for 2D diagram are empty for {},{}".
 				format(self.brd_name, self.circuit_number))
 
-		tp = getTypeByCatFamType(
+		self.tp = getTypeByCatFamType(
 			BuiltInCategory.OST_GenericAnnotation,
 			sch_family,
 			sch_type)
-		if not (tp):
+		if not(self.tp):
 			raise ValueError(
 				"2D diagram FamilyType not found for {},{}".
 				format(self.brd_name, self.circuit_number))
-		return tp
+		return self.tp
+
+	def getParameters(self):
+		"""Get parameters for Main board and brunch systems"""
+
+		# reed parameters in electrical board
+		# IN DEVELOPMENT
+		if self.dia_description == "Feeder":
+				pass
+
+		# for brucn system
+		elif self.dia_description == "Branch":
+			dia.paramLst = [
+				[x, getParVal(self.dia_sys, x)]
+				for x in dia.parToSet]
+		else:
+			pass
 
 	def getLocation(self):
 		global dialist
@@ -412,19 +459,46 @@ class dia():
 			self.schType,
 			sheetLst[self.pageN])
 
-	def getParameters(self):
-		# для вводного щита
-		# для электрической системы
-		self.paramLst = [
-			[x, getParVal(self.rvtSys, x)]
-			for x in dia.parToSet]
-
 	def setParameters(self):
 		for i, j in self.paramLst:
 			elem = self.diaInst
 			if not(j):
 				j = " "
 			setParVal(elem, i, j)
+
+
+class page:
+	"""Page class conteins info and methods for creating pages"""
+
+	count = None
+	brd_name = str()
+
+	title_first_page = getByCatAndStrParam(
+		BuiltInCategory.OST_TitleBlocks,
+		BuiltInParameter.SYMBOL_NAME_PARAM,
+		"WSP_Plankopf_Shema_Titelblatt", True)[0]
+
+	title_page = getByCatAndStrParam(
+		BuiltInCategory.OST_TitleBlocks,
+		BuiltInParameter.SYMBOL_NAME_PARAM,
+		"WSP_Plankopf_Shema", True)[0]
+
+	existing_sheets = None
+
+	def __init__(self):
+		pass
+
+	@classmethod
+	def get_existing_sheets(cls, _brd_name):
+		global doc
+		existing_sheets = [
+			i for i in FilteredElementCollector(doc).
+			OfCategory(BuiltInCategory.OST_Sheets).
+			WhereElementIsNotElementType().
+			ToElements()
+			if i.LookupParameter("MC Panel Code").
+			AsString() == _brd_name]
+		cls.existing_sheets = existing_sheets
 
 
 MAIN_BRD_NAME = IN[0]
@@ -440,51 +514,13 @@ outlist = list()
 footers = list()
 outlist = list()
 
+# ========Initialaise dia class
 diaList = create_dia(MAIN_BRD_NAME)
+map(lambda x: x.getType(), diaList)
+map(lambda x: x.getParameters(), diaList)
 
-# #create tree of electircal systems and initiate dia class
-# for i, sys in enumerate(mainSystems):
-# 	brdCategory = mainBrd.Category.Id
-# 	#Is this system contains subsystems "Sammelschiene"?
-# 	lowbrd = None
-# 	elems = [elem for elem in sys.Elements]
-# 	elem = elems[0]
-# 	#is it electrical board?
-# 	if elem.Category.Id == brdCategory:
-# 		brdCode = elem.LookupParameter("MC Panel Code").AsString()
-# 		#is this board marked as subboard?
-# 		if brdCode == brd_name:
-# 			lowbrd = elem
-
-# 	if i == 0:
-# 	#System 0,0
-# 		diaList.append(dia(sys, 0, 0))
-# 		outlist.append(str(0)+","+str(i))
-
-# 	#LowBoards systems
-# 	elif lowbrd:
-# 		lowSystems = getSystems(lowbrd)
-# 		for j, lowSys in enumerate(lowSystems):
-# 			outlist.append(str(i)+","+str(j))
-# 			diaList.append(dia(lowSys, i, j))
-# 			#If it is the last system - create footer.
-# 			#if j == len(lowSystems) - 1:
-# 				#newFooter = dia(None, i, 11)
-# 				#check if we need footer
-# 				#if newFooter.location:
-# 				#footers.append(newFooter)
-
-# 	#Systems without boards
-# 	else:
-# 		outlist.append(str(0)+","+str(i))
-# 		diaList.append(dia(sys, 0, i))
-# 		#If it is the last system - create footer.
-# 		#if i == len(mainSystems) - 1:
-# 				#newFooter = dia(None, 0, 11)
-# 				#footers.append(newFooter)
-
-# #========Prepare model parameters========
-# map(lambda x: x.getParameters(), diaList)
+# ========Initialaise page class
+page.get_existing_sheets("test")
 
 
 # region "pages properties"
@@ -505,17 +541,6 @@ diaList = create_dia(MAIN_BRD_NAME)
 # 					for x in range(lastPageIndex + 1, 10)]
 # 	map(lambda x: fillers.append(x), fillersOnPage)
 
-# #get TitleBlocks
-# titleblatt = getByCatAndStrParam(
-# 		BuiltInCategory.OST_TitleBlocks,
-# 		BuiltInParameter.SYMBOL_NAME_PARAM,
-# 		"WSP_Plankopf_Shema_Titelblatt", True)[0]
-
-# #get schemaPlankopf
-# shemaPlankopf = getByCatAndStrParam(
-# 		BuiltInCategory.OST_TitleBlocks,
-# 		BuiltInParameter.SYMBOL_NAME_PARAM,
-# 		"WSP_Plankopf_Shema", True)[0]
 
 # #========Find sheets
 # existingSheets = [i for i in FilteredElementCollector(doc).
@@ -565,6 +590,8 @@ TransactionManager.Instance.EnsureInTransaction(doc)
 TransactionManager.Instance.TransactionTaskDone()
 
 # OUT = map(lambda x: ["{},{}".format(x.brdIndex, x.sysIndex), x.rvtSys, x.schType, dia.coordList.index((x.location)), x.pageN], diaList)
-# OUT = [x.dia_description for x in diaList]
-OUT = diaList[1].getType()
-# OUT = MAIN_BRD_INST
+# OUT = [x.tp for x in diaList]
+# OUT = diaList[1].getType()
+
+
+OUT = page.existing_sheets
