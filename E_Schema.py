@@ -273,20 +273,6 @@ class dia:
 		getParameters() - get parameters value from systems
 	"""
 
-	# coordinates of points on scheet
-	coordList = list()
-	coordList.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
-	coordList.append(XYZ(0.113188976377707, 0.66929133858268, 0))
-	coordList.append(XYZ(0.204396325459072, 0.66929133858268, 0))
-	coordList.append(XYZ(0.295603674540437, 0.66929133858268, 0))
-	coordList.append(XYZ(0.386811023621802, 0.669291338582679, 0))
-	coordList.append(XYZ(0.478018372703167, 0.669291338582679, 0))
-	coordList.append(XYZ(0.569225721784533, 0.669291338582679, 0))
-	coordList.append(XYZ(0.660433070865899, 0.669291338582678, 0))
-	coordList.append(XYZ(0.751640419947264, 0.669291338582678, 0))
-	coordList.append(XYZ(0.84284776902863, 0.669291338582678, 0))
-	coordList.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
-
 	parToSet = list()
 	parToSet.append("RBS_ELEC_CIRCUIT_NAME")
 	parToSet.append("RBS_ELEC_CIRCUIT_NUMBER")
@@ -399,13 +385,13 @@ class dia:
 			if brdi == 0:
 				dia.currentPos = 1
 				dia.currentPage += 1
-				self.location = dia.coordList[dia.currentPos]
+				self.location = dia.coord_list[dia.currentPos]
 			self.pageN = dia.currentPage
 			dia.currentPos += modulSize
 
 		# Header
 		elif sysi == 10 and not(self.rvtSys):
-			self.location = dia.coordList[0]
+			self.location = dia.coord_list[0]
 			# brdIndex == is equal page number
 			self.pageN = self.brdIndex
 
@@ -416,13 +402,13 @@ class dia:
 				if x.brdIndex == brdi][-1]
 			previousModulSize = lastDia.LookupParameter("E_PositionsHeld").AsInteger()
 			lastIndex = [
-				dia.coordList.index((x.location)) for x in diaList
+				dia.coord_list.index((x.location)) for x in diaList
 				if x.brdIndex == brdi][-1]
 			footIndex = lastIndex + previousModulSize
 
 			# enought space for Footer
 			if footIndex <= 10:
-				self.location = dia.coordList[footIndex]
+				self.location = dia.coord_list[footIndex]
 				self.pageN = max([
 					x.pageN for x in diaList
 					if x.brdIndex == brdi])
@@ -436,14 +422,14 @@ class dia:
 
 		# Filler
 		elif not(self.rvtSys) and sysi < 10:
-			self.location = dia.coordList[sysi]
+			self.location = dia.coord_list[sysi]
 			# brdIndex == is equal page number
 			self.pageN = self.brdIndex
 
 		# next modules
 		# enought space for next element
 		elif nextPos <= 9:
-			self.location = dia.coordList[dia.currentPos]
+			self.location = dia.coord_list[dia.currentPos]
 			dia.currentPos = nextPos
 			self.pageN = dia.currentPage
 
@@ -452,7 +438,7 @@ class dia:
 		elif nextPos > 9:
 			dia.currentPage += 1
 			dia.currentPos = 1
-			self.location = dia.coordList[dia.currentPos]
+			self.location = dia.coord_list[dia.currentPos]
 			dia.currentPos = 1 + modulSize
 			self.pageN = dia.currentPage
 		else:
@@ -475,6 +461,19 @@ class dia:
 
 class page:
 	"""Page class conteins info and methods for creating pages"""
+	# coordinates of points on scheet
+	coord_list = list()
+	coord_list.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
+	coord_list.append(XYZ(0.113188976377707, 0.66929133858268, 0))
+	coord_list.append(XYZ(0.204396325459072, 0.66929133858268, 0))
+	coord_list.append(XYZ(0.295603674540437, 0.66929133858268, 0))
+	coord_list.append(XYZ(0.386811023621802, 0.669291338582679, 0))
+	coord_list.append(XYZ(0.478018372703167, 0.669291338582679, 0))
+	coord_list.append(XYZ(0.569225721784533, 0.669291338582679, 0))
+	coord_list.append(XYZ(0.660433070865899, 0.669291338582678, 0))
+	coord_list.append(XYZ(0.751640419947264, 0.669291338582678, 0))
+	coord_list.append(XYZ(0.84284776902863, 0.669291338582678, 0))
+	coord_list.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
 
 	total_pages = None
 	existing_sheets = None
@@ -489,11 +488,13 @@ class page:
 		BuiltInParameter.SYMBOL_NAME_PARAM,
 		"WSP_Plankopf_Shema", True)[0]
 
-	def __init__(self):
-		pass
-
 	@classmethod
 	def get_existing_sheets(cls, _brd_name):
+		"""Get existing lists for diagramm
+
+		If the page parameter "MC Panel Code" contains board name,
+		then the page was made for correct board.
+		"""
 		global doc
 		existing_sheets = [
 			i for i in FilteredElementCollector(doc).
@@ -506,8 +507,48 @@ class page:
 
 	@classmethod
 	def get_total_pages(cls, _dia_list):
+		"""Calculate total ammount of pages"""
 		modules_total = sum([x.dia_module_size for x in _dia_list])
-		cls.total_pages = math.ceil(modules_total / 8.0)
+		cls.total_pages = int(math.ceil(modules_total / 8.0)) + 1
+
+	@classmethod
+	def divide_pro_page(cls, _dia_list):
+		"""Get list of diagramms -> list of diagramms pro page"""
+		outlist = [[]]
+		modules_on_page = 0
+		current_page = 0
+		for d in _dia_list:
+			modules_on_page += d.dia_module_size
+			if modules_on_page <= 8:
+				outlist[current_page].append(d)
+			else:
+				outlist.append([])
+				modules_on_page = d.dia_module_size
+				current_page += 1
+				outlist[current_page].append(d)
+		return outlist
+
+	def __init__(self, _page_number):
+		self.page_number = _page_number
+		self.dia_on_page = None
+		self.header_on_page = None
+		self.fillers_on_page = None
+		self.footer_on_page = None
+
+	def place_dia(self):
+		"""Put diagramms on the list"""
+		# place header
+
+		# place branch diagramms
+		global dia_list
+		page_n = self.page_number
+		if page_n != 0:
+			dia_on_page = page.divide_pro_page(dia_list)[page_n - 1]
+			self.dia_on_page = dia_on_page
+
+		# place footer
+
+		#place filler
 
 
 MAIN_BRD_NAME = IN[0]
@@ -529,21 +570,15 @@ map(lambda x: x.get_type(), dia_list)
 map(lambda x: x.getParameters(), dia_list)
 
 # ========Initialaise page class
-page.get_existing_sheets("test")
-page.get_total_pages(dia_list)
+total_pages = page.get_total_pages(dia_list)
 
-#create new scheets ore use existing one
-	#perform check if existing sheets is enought
-	#create new sheet object using existint sheets
+# create new scheets ore use existing one
+# perform check if existing sheets is enought
+# create new sheet object using existint sheets
 
-	#create new sheet object
-
-
-# region "pages properties"
-
-# pages = max([x.pageN for x in diaList])
-# pageNumLst = [brd_name + "_" + str(n).zfill(3) for n in range(pages+1)]
-# pageNameLst = [brd_name] * (pages+1)
+# create new sheet object
+page_list = [page(i) for i in range(page.total_pages)]
+map(lambda x: x.place_dia(), page_list)
 
 # #========Initialaise dia class for Footers Headers and Fillers
 # headers = [dia(None, x, 10) for x in range(1, pages + 1)]
@@ -551,12 +586,11 @@ page.get_total_pages(dia_list)
 # #fillers for pages
 # fillers = list()
 # for page in range(1, pages+1):
-# 	lastPageIndex = [dia.coordList.index((x.location)) for x in diaList
+# 	lastPageIndex = [dia.coord_list.index((x.location)) for x in diaList
 # 						if x.pageN == page][-1]
 # 	fillersOnPage = [dia(None, page, x)
 # 					for x in range(lastPageIndex + 1, 10)]
 # 	map(lambda x: fillers.append(x), fillersOnPage)
-
 
 # endregion
 
@@ -597,8 +631,8 @@ TransactionManager.Instance.EnsureInTransaction(doc)
 # =========End transaction
 TransactionManager.Instance.TransactionTaskDone()
 
-# OUT = map(lambda x: ["{},{}".format(x.brdIndex, x.sysIndex), x.rvtSys, x.schType, dia.coordList.index((x.location)), x.pageN], diaList)
+# OUT = map(lambda x: ["{},{}".format(x.brdIndex, x.sysIndex), x.rvtSys, x.schType, dia.coord_list.index((x.location)), x.pageN], diaList)
 # OUT = [x.dia_family_type for x in diaList]
-# OUT = diaList[1].get_type()
-
-OUT = page.total_pages
+# OUT = [x.dia_on_page for x in page_list]
+OUT = [x.dia_on_page for x in page_list]
+# OUT = page.divide_pro_page(dia_list)
