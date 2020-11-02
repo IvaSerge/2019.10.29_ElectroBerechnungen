@@ -33,6 +33,11 @@ def GetBuiltInParam(paramName):
 
 
 def getParVal(elem, name):
+	"""Get parameter value of the element.
+
+	elem - element,
+	name - parameter name, or BuiltInParametre str.
+	"""
 	value = None
 	# Параметр пользовательский
 	param = elem.LookupParameter(name)
@@ -258,10 +263,10 @@ class dia:
 
 		self.dia_index - readable adress of the system in system tree
 
-		self.tp - type of 2D diagramm to be placed on the page
+		self.dia_family_type - type of 2D diagramm to be placed on the page
 
 	:methods:
-		getType() - get Type of 2D diagramm.
+		get_type() - get Type of 2D diagramm.
 			read text parameters in Revit systems
 			find FamilyType in Revit
 
@@ -298,8 +303,9 @@ class dia:
 		self.dia_description = _description
 		self.brd = None
 		self.brd_name = None
-		self.paramLst = list()
-		self.tp = None
+		self.param_list = list()
+		self.dia_family_type = None
+		self.dia_module_size = int()
 
 		if _description == "Branch":
 			self.circuit_number = str(getParVal(
@@ -321,13 +327,10 @@ class dia:
 		else:
 			self.dia_index = str(self.dia_level)
 
-	def getType(self):
-		# global mainBrd
-		# global doc
-		# global diaList
+	def get_type(self):
 		dia_description = self.dia_description
 		sch_family = None
-		# sch_type = None
+		sch_type = None
 
 		# for "Einspeisung" schema
 		# diagramm is writen in board parameter
@@ -348,15 +351,18 @@ class dia:
 				"Parameters for 2D diagram are empty for {},{}".
 				format(self.brd_name, self.circuit_number))
 
-		self.tp = getTypeByCatFamType(
+		self.dia_family_type = getTypeByCatFamType(
 			BuiltInCategory.OST_GenericAnnotation,
 			sch_family,
 			sch_type)
-		if not(self.tp):
+		if not(self.dia_family_type):
 			raise ValueError(
 				"2D diagram FamilyType not found for {},{}".
 				format(self.brd_name, self.circuit_number))
-		return self.tp
+
+		self.dia_module_size = self.dia_family_type.\
+			LookupParameter("E_PositionsHeld").AsInteger()
+		return self.dia_family_type
 
 	def getParameters(self):
 		"""Get parameters for Main board and brunch systems"""
@@ -368,7 +374,7 @@ class dia:
 
 		# for brucn system
 		elif self.dia_description == "Branch":
-			dia.paramLst = [
+			dia.param_list = [
 				[x, getParVal(self.dia_sys, x)]
 				for x in dia.parToSet]
 		else:
@@ -460,7 +466,7 @@ class dia:
 			sheetLst[self.pageN])
 
 	def setParameters(self):
-		for i, j in self.paramLst:
+		for i, j in self.param_list:
 			elem = self.diaInst
 			if not(j):
 				j = " "
@@ -470,8 +476,8 @@ class dia:
 class page:
 	"""Page class conteins info and methods for creating pages"""
 
-	count = None
-	brd_name = str()
+	total_pages = None
+	existing_sheets = None
 
 	title_first_page = getByCatAndStrParam(
 		BuiltInCategory.OST_TitleBlocks,
@@ -482,8 +488,6 @@ class page:
 		BuiltInCategory.OST_TitleBlocks,
 		BuiltInParameter.SYMBOL_NAME_PARAM,
 		"WSP_Plankopf_Shema", True)[0]
-
-	existing_sheets = None
 
 	def __init__(self):
 		pass
@@ -500,6 +504,11 @@ class page:
 			AsString() == _brd_name]
 		cls.existing_sheets = existing_sheets
 
+	@classmethod
+	def get_total_pages(cls, _dia_list):
+		modules_total = sum([x.dia_module_size for x in _dia_list])
+		cls.total_pages = math.ceil(modules_total / 8.0)
+
 
 MAIN_BRD_NAME = IN[0]
 MAIN_BRD_INST = getByCatAndStrParam(
@@ -515,12 +524,19 @@ footers = list()
 outlist = list()
 
 # ========Initialaise dia class
-diaList = create_dia(MAIN_BRD_NAME)
-map(lambda x: x.getType(), diaList)
-map(lambda x: x.getParameters(), diaList)
+dia_list = create_dia(MAIN_BRD_NAME)
+map(lambda x: x.get_type(), dia_list)
+map(lambda x: x.getParameters(), dia_list)
 
 # ========Initialaise page class
 page.get_existing_sheets("test")
+page.get_total_pages(dia_list)
+
+#create new scheets ore use existing one
+	#perform check if existing sheets is enought
+	#create new sheet object using existint sheets
+
+	#create new sheet object
 
 
 # region "pages properties"
@@ -541,14 +557,6 @@ page.get_existing_sheets("test")
 # 					for x in range(lastPageIndex + 1, 10)]
 # 	map(lambda x: fillers.append(x), fillersOnPage)
 
-
-# #========Find sheets
-# existingSheets = [i for i in FilteredElementCollector(doc).
-# 			OfCategory(BuiltInCategory.OST_Sheets).
-# 			WhereElementIsNotElementType().
-# 			ToElements()
-# 			if i.LookupParameter("MC Panel Code"
-# 			).AsString() == brd_name]
 
 # endregion
 
@@ -590,8 +598,7 @@ TransactionManager.Instance.EnsureInTransaction(doc)
 TransactionManager.Instance.TransactionTaskDone()
 
 # OUT = map(lambda x: ["{},{}".format(x.brdIndex, x.sysIndex), x.rvtSys, x.schType, dia.coordList.index((x.location)), x.pageN], diaList)
-# OUT = [x.tp for x in diaList]
-# OUT = diaList[1].getType()
+# OUT = [x.dia_family_type for x in diaList]
+# OUT = diaList[1].get_type()
 
-
-OUT = page.existing_sheets
+OUT = page.total_pages
