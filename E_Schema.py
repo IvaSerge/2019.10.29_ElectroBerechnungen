@@ -196,9 +196,9 @@ def create_dia(_brd_name, _brd_sys_index=0):
 	brd_circuits = brd_circuits_all[1]
 
 	# check if it is feeder of main board
-	if not(_brd_sys_index):
+	if _brd_sys_index == 0:
 		sys_upper_index = 1
-		diagramm = dia(None, brd_feeder, "Feeder")
+		diagramm = dia(brd_feeder, sys_upper_index, "Feeder")
 		brd_sys_list.append(diagramm)
 	else:
 		sys_upper_index = _brd_sys_index + 1
@@ -234,8 +234,8 @@ def create_dia(_brd_name, _brd_sys_index=0):
 
 class dia():
 	"""Diagramm class"""
-# region "class varaibles"
 
+# region "class varaibles"
 	# coordinates of points on scheet
 	coordList = list()
 	coordList.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
@@ -265,15 +265,25 @@ class dia():
 	def __init__(self, _rvtSys, _brd_lvl, _description):
 		self.dia_level = _brd_lvl
 		self.dia_sys = _rvtSys
+		self.brd = None
+		self.brd_name = None
 		self.dia_description = _description
 		self.paramLst = list()
 
-		if _rvtSys:
+		if _description == "Branch":
 			self.circuit_number = str(getParVal(
 				_rvtSys,
 				"RBS_ELEC_CIRCUIT_NUMBER"))
+			self.brd = self.dia_sys.BaseEquipment
+			self.brd_name = self.brd.Name
+
+		elif _description == "Feeder":
+			self.circuit_number = "Feeder"
+			global MAIN_BRD_INST
+			self.brd = MAIN_BRD_INST
+			self.brd_name = "Main board"
 		else:
-			self.circuit_number = None
+			pass
 
 		if self.circuit_number:
 			self.dia_index = str(self.dia_level) + "." + self.circuit_number
@@ -284,33 +294,38 @@ class dia():
 		# global mainBrd
 		# global doc
 		# global diaList
-		dia_sys = self.dia_sys
 		dia_description = self.dia_description
 		sch_family = None
-		sch_type = None
+		# sch_type = None
 
 		# for "Einspeisung" schema
 		# diagramm is writen in board parameter
 		if dia_description == "Feeder":
-			sys_brd = dia_sys.BaseEquipment
-			sys_brd_tp = doc.GetElement(sys_brd.GetTypeId())
-			sch_family = sys_brd_tp.LookupParameter("E_Sch_Family").AsString()
-			sch_type = sys_brd_tp.LookupParameter("E_Sch_FamilyType").AsString()
+			sch_family = self.brd.LookupParameter("E_Sch_Family").AsString()
+			sch_type = self.brd.LookupParameter("E_Sch_FamilyType").AsString()
 
 		# for "Electrical" schema
 		elif dia_description == "Branch":
 			# diagramm is writen in electrical system parameter
 			sch_family = self.dia_sys.LookupParameter("E_Sch_Family").AsString()
 			sch_type = self.dia_sys.LookupParameter("E_Sch_FamilyType").AsString()
-
 		else:
 			pass
 
-		# tp = getTypeByCatFamType(
-		# 	BuiltInCategory.OST_GenericAnnotation,
-		# 	sch_family,
-		# 	sch_type)
-		return None
+		if not(sch_family) or not(sch_type):
+			raise ValueError(
+				"Parameters for 2D diagram are empty for {},{}".
+				format(self.brd_name, self.circuit_number))
+
+		tp = getTypeByCatFamType(
+			BuiltInCategory.OST_GenericAnnotation,
+			sch_family,
+			sch_type)
+		if not (tp):
+			raise ValueError(
+				"2D diagram FamilyType not found for {},{}".
+				format(self.brd_name, self.circuit_number))
+		return tp
 
 	def getLocation(self):
 		global dialist
@@ -412,7 +427,12 @@ class dia():
 			setParVal(elem, i, j)
 
 
-brd_name = IN[0]
+MAIN_BRD_NAME = IN[0]
+MAIN_BRD_INST = getByCatAndStrParam(
+	BuiltInCategory.OST_ElectricalEquipment,
+	BuiltInParameter.RBS_ELEC_PANEL_NAME,
+	MAIN_BRD_NAME,
+	False)[0]
 create_scheets = IN[1]
 reload = IN[2]
 
@@ -420,7 +440,7 @@ outlist = list()
 footers = list()
 outlist = list()
 
-diaList = create_dia(brd_name)
+diaList = create_dia(MAIN_BRD_NAME)
 
 # #create tree of electircal systems and initiate dia class
 # for i, sys in enumerate(mainSystems):
@@ -545,5 +565,6 @@ TransactionManager.Instance.EnsureInTransaction(doc)
 TransactionManager.Instance.TransactionTaskDone()
 
 # OUT = map(lambda x: ["{},{}".format(x.brdIndex, x.sysIndex), x.rvtSys, x.schType, dia.coordList.index((x.location)), x.pageN], diaList)
-# OUT = [x.dia_index for x in diaList]
+# OUT = [x.dia_description for x in diaList]
 OUT = diaList[1].getType()
+# OUT = MAIN_BRD_INST
