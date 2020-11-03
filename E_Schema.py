@@ -338,6 +338,12 @@ class dia:
 			sch_family = "E_SCH_Filler"
 			sch_type = "Filler_1modul"
 
+		# for "Header"
+		elif dia_description == "Header":
+			# diagramm is hardcoded
+			sch_family = "E_SCH_Filler"
+			sch_type = "Filler_Start"
+
 		else:
 			pass
 
@@ -551,29 +557,32 @@ class page:
 		# place branch diagramms
 		global dia_list
 		page_n = self.page_number
-
 		dia_on_page = page.divide_pro_page(dia_list)[page_n - 1] \
 			if page_n != 0 else None
 
-		# place footer
-		# if dia_on_page:
+		# place header
+		if dia_on_page:
+				header = dia(None, None, "Header")
+				header.get_type()
+				dia_on_page.insert(0, header)
 
 		# place filler
 		if dia_on_page:
-			# check how mutch free modules available
+			# check how much free modules available
 			dia_used_modules = sum([
 				x.dia_module_size for x in dia_on_page])
 			dia_free_modules = 9 - dia_used_modules
-
 			for _ in range(dia_free_modules):
 				filler = dia(None, None, "Filler")
 				filler.get_type()
 				dia_on_page.append(filler)
-		else:
-			dia_used_modules = None
+
 		self.dia_on_page = dia_on_page
 
-		return self.dia_on_page
+		if dia_on_page:
+			return [x.dia_family_type for x in dia_on_page]
+		else:
+			return None
 
 
 MAIN_BRD_NAME = IN[0]
@@ -605,17 +614,6 @@ total_pages = page.get_total_pages(dia_list)
 page_list = [page(i) for i in range(page.total_pages)]
 map(lambda x: x.place_dia(), page_list)
 
-# #========Initialaise dia class for Footers Headers and Fillers
-# headers = [dia(None, x, 10) for x in range(1, pages + 1)]
-
-# #fillers for pages
-# fillers = list()
-# for page in range(1, pages+1):
-# 	lastPageIndex = [dia.coord_list.index((x.location)) for x in diaList
-# 						if x.pageN == page][-1]
-# 	fillersOnPage = [dia(None, page, x)
-# 					for x in range(lastPageIndex + 1, 10)]
-# 	map(lambda x: fillers.append(x), fillersOnPage)
 
 # endregion
 
