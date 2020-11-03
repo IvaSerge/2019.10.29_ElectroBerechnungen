@@ -614,10 +614,14 @@ class page:
 
 	def get_sheet(self, _create_new):
 		global doc
+		global MAIN_BRD_NAME
 		# create new scheets ore use existing one
 		# perform check if existing sheets is enought
 		# create new sheet object using existint sheets
 		page_number = self.page_number
+		total_pages = page.total_pages
+		sheet_num = MAIN_BRD_NAME + "_" + str(page_number).zfill(3)
+		sheet_name = MAIN_BRD_NAME
 
 		if page_number == 0:
 			title_block = page.title_first_page
@@ -639,9 +643,17 @@ class page:
 		else:
 			pass
 
-		# current_sheet.setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
+		# set page parameters
+		param_list = list()
+		param_list.append(["MC Number of Pages", str(total_pages)])
+		param_list.append(["MC Page Number", str(page_number + 1)])
+		param_list.append(["SHEET_NAME", sheet_name])
+		param_list.append(["SHEET_NUMBER", sheet_num])
+		param_list.append(["MC Panel Code", MAIN_BRD_NAME])
+		map(lambda x: setParVal(
+			current_sheet, x[0], x[1]),
+			param_list)
 
-		# existing_sheets = page.existing_sheets
 		return current_sheet
 
 
