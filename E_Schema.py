@@ -286,6 +286,7 @@ class dia:
 	def __init__(self, _rvtSys, _brd_lvl, _description):
 		self.dia_level = _brd_lvl
 		self.dia_sys = _rvtSys
+		self.circuit_number = None
 		self.dia_description = _description
 		self.brd = None
 		self.brd_name = None
@@ -305,6 +306,7 @@ class dia:
 			global MAIN_BRD_INST
 			self.brd = MAIN_BRD_INST
 			self.brd_name = "Main board"
+
 		else:
 			pass
 
@@ -329,6 +331,13 @@ class dia:
 			# diagramm is writen in electrical system parameter
 			sch_family = self.dia_sys.LookupParameter("E_Sch_Family").AsString()
 			sch_type = self.dia_sys.LookupParameter("E_Sch_FamilyType").AsString()
+
+		# for "Filler"
+		elif dia_description == "Filler":
+			# diagramm is hardcoded
+			sch_family = "E_SCH_Filler"
+			sch_type = "Filler_1modul"
+
 		else:
 			pass
 
@@ -542,13 +551,29 @@ class page:
 		# place branch diagramms
 		global dia_list
 		page_n = self.page_number
-		if page_n != 0:
-			dia_on_page = page.divide_pro_page(dia_list)[page_n - 1]
-			self.dia_on_page = dia_on_page
+
+		dia_on_page = page.divide_pro_page(dia_list)[page_n - 1] \
+			if page_n != 0 else None
 
 		# place footer
+		# if dia_on_page:
 
-		#place filler
+		# place filler
+		if dia_on_page:
+			# check how mutch free modules available
+			dia_used_modules = sum([
+				x.dia_module_size for x in dia_on_page])
+			dia_free_modules = 9 - dia_used_modules
+
+			for _ in range(dia_free_modules):
+				filler = dia(None, None, "Filler")
+				filler.get_type()
+				dia_on_page.append(filler)
+		else:
+			dia_used_modules = None
+		self.dia_on_page = dia_on_page
+
+		return self.dia_on_page
 
 
 MAIN_BRD_NAME = IN[0]
@@ -634,5 +659,5 @@ TransactionManager.Instance.TransactionTaskDone()
 # OUT = map(lambda x: ["{},{}".format(x.brdIndex, x.sysIndex), x.rvtSys, x.schType, dia.coord_list.index((x.location)), x.pageN], diaList)
 # OUT = [x.dia_family_type for x in diaList]
 # OUT = [x.dia_on_page for x in page_list]
-OUT = [x.dia_on_page for x in page_list]
+OUT = [x.place_dia() for x in page_list]
 # OUT = page.divide_pro_page(dia_list)
