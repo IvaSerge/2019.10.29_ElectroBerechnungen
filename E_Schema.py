@@ -270,7 +270,7 @@ class dia:
 			read text parameters in Revit systems
 			find FamilyType in Revit
 
-		getParameters() - get parameters value from systems
+		get_parameters() - get parameters value from systems
 	"""
 
 	parToSet = list()
@@ -365,7 +365,7 @@ class dia:
 			LookupParameter("E_PositionsHeld").AsInteger()
 		return self.dia_family_type
 
-	def getParameters(self):
+	def get_parameters(self):
 		"""Get parameters for Main board and brunch systems"""
 
 		# reed parameters in electrical board
@@ -518,7 +518,10 @@ class page:
 			ToElements()
 			if i.LookupParameter("MC Panel Code").
 			AsString() == _brd_name]
+		existing_sheets.sort(key=lambda x: x.SheetNumber)
+
 		cls.existing_sheets = existing_sheets
+		return existing_sheets
 
 	@classmethod
 	def get_total_pages(cls, _dia_list):
@@ -543,6 +546,25 @@ class page:
 				outlist[current_page].append(d)
 		return outlist
 
+	@classmethod
+	def check_page_ammount(cls, _create_new):
+		"""Check if existing sheets is enough to place all dias"""
+
+		existing_sheets = cls.existing_sheets
+		total_pages = cls.total_pages
+		if existing_sheets:
+			ex_sh_ammount = len(existing_sheets)
+		else:
+			ex_sh_ammount = 0
+		if _create_new:
+			# it does not metter
+			return True
+		elif not(_create_new) and ex_sh_ammount >= total_pages:
+			# it is enought
+			return True
+		elif not(_create_new) and ex_sh_ammount < total_pages:
+			return False
+
 	def __init__(self, _page_number):
 		self.page_number = _page_number
 		self.dia_on_page = None
@@ -550,9 +572,19 @@ class page:
 		self.fillers_on_page = None
 		self.footer_on_page = None
 
-	def place_dia(self):
-		"""Put diagramms on the list"""
-		# place header
+	def get_dia_list(self):
+		"""Create list of diagramms to be put on the page
+
+		Create list of diagramms, footers and fillers for current page.
+		If self.page_number == 0 - it is the main page. No diagramms there
+		else - it is a page with diagramms
+		Header need to be placed for every page with diagramms
+		Maximum module size for A4 paper is 9.
+		If number of modules is less then 8 - fillers are created.
+
+		return:
+			list of elements on the current page
+		"""
 
 		# place branch diagramms
 		global dia_list
@@ -578,11 +610,28 @@ class page:
 				dia_on_page.append(filler)
 
 		self.dia_on_page = dia_on_page
+		return dia_on_page
 
-		if dia_on_page:
-			return [x.dia_family_type for x in dia_on_page]
+	def get_sheet(self, _create_new):
+		# create new scheets ore use existing one
+		# perform check if existing sheets is enought
+		# create new sheet object using existint sheets
+		# page_number = self.page_number
+		existing_sheets = page.existing_sheets
+		# current_sheet = page.existing_sheets[page_number]
+
+		if _create_new:
+			pass
+			# delete old pages and create new
+			# map(lambda x:doc.Delete(x.Id), existingSheets)
+			# sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
+			# map(lambda x:sheetLst.append(ViewSheet.Create(doc, shemaPlankopf.Id)), range(pages))
+			# map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 		else:
-			return None
+			pass
+
+		existing_sheets = page.existing_sheets
+		return existing_sheets
 
 
 MAIN_BRD_NAME = IN[0]
@@ -591,7 +640,7 @@ MAIN_BRD_INST = getByCatAndStrParam(
 	BuiltInParameter.RBS_ELEC_PANEL_NAME,
 	MAIN_BRD_NAME,
 	False)[0]
-create_scheets = IN[1]
+create_new_sheets = IN[1]
 reload = IN[2]
 
 outlist = list()
@@ -601,28 +650,28 @@ outlist = list()
 # ========Initialaise dia class
 dia_list = create_dia(MAIN_BRD_NAME)
 map(lambda x: x.get_type(), dia_list)
-map(lambda x: x.getParameters(), dia_list)
+map(lambda x: x.get_parameters(), dia_list)
 
 # ========Initialaise page class
 total_pages = page.get_total_pages(dia_list)
+existing_sheets = page.get_existing_sheets(MAIN_BRD_NAME)
 
-# create new scheets ore use existing one
-# perform check if existing sheets is enought
-# create new sheet object using existint sheets
-
-# create new sheet object
+# check is it enough existing pages
+page.check_page_ammount(create_new_sheets)
 page_list = [page(i) for i in range(page.total_pages)]
-map(lambda x: x.place_dia(), page_list)
-
+map(lambda x: x.get_dia_list(), page_list)
 
 # endregion
 
 # =========Start transaction
 TransactionManager.Instance.EnsureInTransaction(doc)
 
-# #========Create sheets========
+sheet_list = map(lambda x: x.get_sheet(create_new_sheets), page_list)
+
+# ========Create sheets========
+
 # sheetLst = list()
-# if create_scheets == False:
+# if create_sheets == False:
 # 	sheetLst = existingSheets
 # 	elemsOnSheet = list()
 # 	#remove all instances on sheet
@@ -657,5 +706,5 @@ TransactionManager.Instance.TransactionTaskDone()
 # OUT = map(lambda x: ["{},{}".format(x.brdIndex, x.sysIndex), x.rvtSys, x.schType, dia.coord_list.index((x.location)), x.pageN], diaList)
 # OUT = [x.dia_family_type for x in diaList]
 # OUT = [x.dia_on_page for x in page_list]
-OUT = [x.place_dia() for x in page_list]
-# OUT = page.divide_pro_page(dia_list)
+# OUT = [x.get_dia_list() for x in page_list]
+OUT = page.check_page_ammount(create_new_sheets)
