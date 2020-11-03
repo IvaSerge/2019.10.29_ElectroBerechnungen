@@ -563,14 +563,11 @@ class page:
 			# it is enought
 			return True
 		elif not(_create_new) and ex_sh_ammount < total_pages:
-			return False
+			raise TypeError("Not enought existing pages")
 
 	def __init__(self, _page_number):
 		self.page_number = _page_number
 		self.dia_on_page = None
-		self.header_on_page = None
-		self.fillers_on_page = None
-		self.footer_on_page = None
 
 	def get_dia_list(self):
 		"""Create list of diagramms to be put on the page
@@ -615,19 +612,18 @@ class page:
 	def get_sheet(self, _create_new):
 		global doc
 		global MAIN_BRD_NAME
-		# create new scheets ore use existing one
-		# perform check if existing sheets is enought
-		# create new sheet object using existint sheets
 		page_number = self.page_number
 		total_pages = page.total_pages
 		sheet_num = MAIN_BRD_NAME + "_" + str(page_number).zfill(3)
 		sheet_name = MAIN_BRD_NAME
 
+		# get title block
 		if page_number == 0:
 			title_block = page.title_first_page
 		else:
 			title_block = page.title_page
 
+		# find current sheet
 		existing_sheets = page.existing_sheets
 		if existing_sheets and page_number <= len(existing_sheets) - 1:
 			current_sheet = existing_sheets[page_number]
@@ -638,21 +634,23 @@ class page:
 			# delete old page and create new
 			doc.Delete(current_sheet.Id)
 			current_sheet = ViewSheet.Create(doc, title_block.Id)
-		elif _create_new and not(current_sheet):
-			current_sheet = ViewSheet.Create(doc, title_block.Id)
-		else:
-			pass
 
-		# set page parameters
+		elif _create_new and not(current_sheet):
+			# create new pages only if no existing pages found
+			current_sheet = ViewSheet.Create(doc, title_block.Id)
+
+		else:
+			# existing page found. Nothing to do here
+			return current_sheet
+
+		# set new page parameters
 		param_list = list()
 		param_list.append(["MC Number of Pages", str(total_pages)])
 		param_list.append(["MC Page Number", str(page_number + 1)])
 		param_list.append(["SHEET_NAME", sheet_name])
 		param_list.append(["SHEET_NUMBER", sheet_num])
 		param_list.append(["MC Panel Code", MAIN_BRD_NAME])
-		map(lambda x: setParVal(
-			current_sheet, x[0], x[1]),
-			param_list)
+		map(lambda x: setParVal(current_sheet, x[0], x[1]), param_list)
 
 		return current_sheet
 
@@ -691,37 +689,11 @@ TransactionManager.Instance.EnsureInTransaction(doc)
 
 sheet_list = map(lambda x: x.get_sheet(create_new_sheets), page_list)
 
-# ========Create sheets========
-
-# sheetLst = list()
-# if create_sheets == False:
-# 	sheetLst = existingSheets
-# 	elemsOnSheet = list()
-# 	#remove all instances on sheet
-# 	for sheet in sheetLst:
-# 		elems = FilteredElementCollector(doc
-# 				).OwnedByView(sheet.Id
-# 				).OfCategory(BuiltInCategory.OST_GenericAnnotation
-# 				).WhereElementIsNotElementType().ToElementIds()
-# 		map(lambda x: elemsOnSheet.append(x), elems)
-# 	typed_list = List[ElementId](elemsOnSheet)
-# 	doc.Delete(typed_list)
-
-# if create_scheets == True:
-# 	map(lambda x:doc.Delete(x.Id), existingSheets)
-# 	sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
-# 	map(lambda x:sheetLst.append(ViewSheet.Create(
-# 				doc, shemaPlankopf.Id)), range(pages))
-# 	map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
-
 # #========Place diagramms========
 # map(lambda x: x.placeDiagramm(), diaList)
 # # map(lambda x: x.placeDiagramm(), footers)
 # map(lambda x: x.placeDiagramm(), headers)
 # map(lambda x: x.placeDiagramm(), fillers)
-
-# #========Set Parameters========
-# map(lambda x: x.setParameters(), diaList)
 
 # =========End transaction
 TransactionManager.Instance.TransactionTaskDone()
