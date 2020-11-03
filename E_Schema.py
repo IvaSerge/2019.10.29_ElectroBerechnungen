@@ -613,25 +613,34 @@ class page:
 		return dia_on_page
 
 	def get_sheet(self, _create_new):
+		global doc
 		# create new scheets ore use existing one
 		# perform check if existing sheets is enought
 		# create new sheet object using existint sheets
-		# page_number = self.page_number
-		existing_sheets = page.existing_sheets
-		# current_sheet = page.existing_sheets[page_number]
+		page_number = self.page_number
 
-		if _create_new:
-			pass
-			# delete old pages and create new
-			# map(lambda x:doc.Delete(x.Id), existingSheets)
-			# sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
-			# map(lambda x:sheetLst.append(ViewSheet.Create(doc, shemaPlankopf.Id)), range(pages))
-			# map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
+		if page_number == 0:
+			title_block = page.title_first_page
+		else:
+			title_block = page.title_page
+
+		existing_sheets = page.existing_sheets
+		if existing_sheets and page_number <= len(existing_sheets) - 1:
+			current_sheet = existing_sheets[page_number]
+		else:
+			current_sheet = None
+
+		if _create_new and current_sheet:
+			# delete old page and create new
+			doc.Delete(current_sheet.Id)
+			current_sheet = ViewSheet.Create(doc, title_block.Id)
+		elif _create_new and not(current_sheet):
+			current_sheet = ViewSheet.Create(doc, title_block.Id)
 		else:
 			pass
 
-		existing_sheets = page.existing_sheets
-		return existing_sheets
+		# existing_sheets = page.existing_sheets
+		return current_sheet
 
 
 MAIN_BRD_NAME = IN[0]
@@ -707,4 +716,4 @@ TransactionManager.Instance.TransactionTaskDone()
 # OUT = [x.dia_family_type for x in diaList]
 # OUT = [x.dia_on_page for x in page_list]
 # OUT = [x.get_dia_list() for x in page_list]
-OUT = page.check_page_ammount(create_new_sheets)
+OUT = sheet_list
