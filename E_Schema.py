@@ -568,6 +568,7 @@ class page:
 	def __init__(self, _page_number):
 		self.page_number = _page_number
 		self.dia_on_page = None
+		self.sheet_inst = None
 
 	def get_dia_list(self):
 		"""Create list of diagramms to be put on the page
@@ -651,7 +652,7 @@ class page:
 		param_list.append(["SHEET_NUMBER", sheet_num])
 		param_list.append(["MC Panel Code", MAIN_BRD_NAME])
 		map(lambda x: setParVal(current_sheet, x[0], x[1]), param_list)
-
+		self.sheet_inst = current_sheet
 		return current_sheet
 
 
@@ -688,6 +689,7 @@ map(lambda x: x.get_dia_list(), page_list)
 TransactionManager.Instance.EnsureInTransaction(doc)
 
 sheet_list = map(lambda x: x.get_sheet(create_new_sheets), page_list)
+# map(lambda x: x.create_dia(), page_list)
 
 # #========Place diagramms========
 # map(lambda x: x.placeDiagramm(), diaList)
