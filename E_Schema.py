@@ -293,6 +293,7 @@ class dia:
 		self.param_list = list()
 		self.dia_family_type = None
 		self.dia_module_size = int()
+		self.dia_inst = None
 
 		if _description == "Branch":
 			self.circuit_number = str(getParVal(
@@ -651,6 +652,7 @@ class page:
 			map(lambda x: elemsOnSheet.append(x), elems)
 			typed_list = List[ElementId](elemsOnSheet)
 			doc.Delete(typed_list)
+			self.sheet_inst = current_sheet
 			return current_sheet
 
 		# set new sheet parameters
@@ -665,12 +667,27 @@ class page:
 		return current_sheet
 
 	def create_2D(self):
+		global doc
+
 		dia_on_page = self.dia_on_page
 		if not(dia_on_page):
 			return None
+
+		position_index = 0
+		outlist = list()
 		for dia in dia_on_page:
-			pass
-		pass
+			insert_point = page.coord_list[position_index]
+			dia.dia_inst = doc.Create.NewFamilyInstance(
+				insert_point,
+				dia.dia_family_type,
+				self.sheet_inst)
+			outlist.append([insert_point, dia.dia_family_type, self.sheet_inst])
+			if position_index == 0:
+				# it is start position
+				position_index += 1
+			else:
+				position_index += dia.dia_module_size
+		return outlist
 
 
 MAIN_BRD_NAME = IN[0]
@@ -706,7 +723,7 @@ map(lambda x: x.get_dia_list(), page_list)
 TransactionManager.Instance.EnsureInTransaction(doc)
 
 sheet_list = map(lambda x: x.get_sheet(create_new_sheets), page_list)
-map(lambda x: x.create_2D(), page_list)
+list_2D = map(lambda x: x.create_2D(), page_list)
 
 # #========Place diagramms========
 # map(lambda x: x.placeDiagramm(), diaList)
@@ -721,4 +738,4 @@ TransactionManager.Instance.TransactionTaskDone()
 # OUT = [x.dia_family_type for x in diaList]
 # OUT = [x.dia_on_page for x in page_list]
 # OUT = [x.get_dia_list() for x in page_list]
-OUT = sheet_list
+OUT = list_2D
