@@ -641,10 +641,19 @@ class page:
 			current_sheet = ViewSheet.Create(doc, title_block.Id)
 
 		else:
-			# existing page found. Nothing to do here
+			# existing sheet found.
+			# remove all instances on existing sheet.
+			elemsOnSheet = list()
+			elems = FilteredElementCollector(doc)\
+				.OwnedByView(current_sheet.Id)\
+				.OfCategory(BuiltInCategory.OST_GenericAnnotation)\
+				.WhereElementIsNotElementType().ToElementIds()
+			map(lambda x: elemsOnSheet.append(x), elems)
+			typed_list = List[ElementId](elemsOnSheet)
+			doc.Delete(typed_list)
 			return current_sheet
 
-		# set new page parameters
+		# set new sheet parameters
 		param_list = list()
 		param_list.append(["MC Number of Pages", str(total_pages)])
 		param_list.append(["MC Page Number", str(page_number + 1)])
@@ -654,6 +663,14 @@ class page:
 		map(lambda x: setParVal(current_sheet, x[0], x[1]), param_list)
 		self.sheet_inst = current_sheet
 		return current_sheet
+
+	def create_2D(self):
+		dia_on_page = self.dia_on_page
+		if not(dia_on_page):
+			return None
+		for dia in dia_on_page:
+			pass
+		pass
 
 
 MAIN_BRD_NAME = IN[0]
@@ -689,7 +706,7 @@ map(lambda x: x.get_dia_list(), page_list)
 TransactionManager.Instance.EnsureInTransaction(doc)
 
 sheet_list = map(lambda x: x.get_sheet(create_new_sheets), page_list)
-# map(lambda x: x.create_dia(), page_list)
+map(lambda x: x.create_2D(), page_list)
 
 # #========Place diagramms========
 # map(lambda x: x.placeDiagramm(), diaList)
