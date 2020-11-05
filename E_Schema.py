@@ -242,7 +242,7 @@ class dia:
 		Electrical diagramm class
 
 	:class properties:
-		parToSet - list()
+		par_to_set - list()
 			parameters, that would be read from electrical system
 			and would be set to 2D diagramm instance
 
@@ -273,15 +273,15 @@ class dia:
 		get_parameters() - get parameters value from systems
 	"""
 
-	parToSet = list()
-	parToSet.append("RBS_ELEC_CIRCUIT_NAME")
-	parToSet.append("RBS_ELEC_CIRCUIT_NUMBER")
-	parToSet.append("RBS_ELEC_CIRCUIT_WIRE_TYPE_PARAM")
-	parToSet.append("CBT:CIR_Kabel")
-	parToSet.append("CBT:CIR_Nennstrom")
-	parToSet.append("CBT:CIR_Schutztyp")
-	parToSet.append("CBT:CIR_Elektrischen Schlag")
-	parToSet.append("E_Stromkreisprefix")
+	par_to_set = list()
+	par_to_set.append("RBS_ELEC_CIRCUIT_NAME")
+	par_to_set.append("RBS_ELEC_CIRCUIT_NUMBER")
+	par_to_set.append("RBS_ELEC_CIRCUIT_WIRE_TYPE_PARAM")
+	par_to_set.append("CBT:CIR_Kabel")
+	par_to_set.append("CBT:CIR_Nennstrom")
+	par_to_set.append("CBT:CIR_Schutztyp")
+	par_to_set.append("CBT:CIR_Elektrischen Schlag")
+	par_to_set.append("E_Stromkreisprefix")
 
 	def __init__(self, _rvtSys, _brd_lvl, _description):
 		self.dia_level = _brd_lvl
@@ -378,7 +378,7 @@ class dia:
 		elif self.dia_description == "Branch":
 			dia.param_list = [
 				[x, getParVal(self.dia_sys, x)]
-				for x in dia.parToSet]
+				for x in dia.par_to_set]
 		else:
 			pass
 
@@ -467,12 +467,13 @@ class dia:
 			self.schType,
 			sheetLst[self.pageN])
 
-	def setParameters(self):
+	def set_parameters(self):
 		for i, j in self.param_list:
 			elem = self.diaInst
 			if not(j):
 				j = " "
 			setParVal(elem, i, j)
+		return None
 
 
 class page:
@@ -722,20 +723,19 @@ map(lambda x: x.get_dia_list(), page_list)
 # =========Start transaction
 TransactionManager.Instance.EnsureInTransaction(doc)
 
-sheet_list = map(lambda x: x.get_sheet(create_new_sheets), page_list)
-list_2D = map(lambda x: x.create_2D(), page_list)
+# sheet_list = map(lambda x: x.get_sheet(create_new_sheets), page_list)
+# doc.Regenerate()
+# list_2D = map(lambda x: x.create_2D(), page_list)
+map(lambda x: x.set_parameters() for x in dia_list)
 
 # #========Place diagramms========
-# map(lambda x: x.placeDiagramm(), diaList)
 # # map(lambda x: x.placeDiagramm(), footers)
-# map(lambda x: x.placeDiagramm(), headers)
-# map(lambda x: x.placeDiagramm(), fillers)
+# IN DEVELOPMENT
+
 
 # =========End transaction
 TransactionManager.Instance.TransactionTaskDone()
 
-# OUT = map(lambda x: ["{},{}".format(x.brdIndex, x.sysIndex), x.rvtSys, x.schType, dia.coord_list.index((x.location)), x.pageN], diaList)
-# OUT = [x.dia_family_type for x in diaList]
 # OUT = [x.dia_on_page for x in page_list]
 # OUT = [x.get_dia_list() for x in page_list]
-OUT = list_2D
+OUT = [x.dia_sys for x in dia_list]
