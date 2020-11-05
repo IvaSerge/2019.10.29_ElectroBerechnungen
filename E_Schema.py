@@ -374,9 +374,9 @@ class dia:
 		if self.dia_description == "Feeder":
 				pass
 
-		# for brucn system
+		# for system
 		elif self.dia_description == "Branch":
-			dia.param_list = [
+			self.param_list = [
 				[x, getParVal(self.dia_sys, x)]
 				for x in dia.par_to_set]
 		else:
@@ -469,11 +469,10 @@ class dia:
 
 	def set_parameters(self):
 		for i, j in self.param_list:
-			elem = self.diaInst
+			elem = self.dia_inst
 			if not(j):
 				j = " "
 			setParVal(elem, i, j)
-		return None
 
 
 class page:
@@ -723,19 +722,18 @@ map(lambda x: x.get_dia_list(), page_list)
 # =========Start transaction
 TransactionManager.Instance.EnsureInTransaction(doc)
 
-# sheet_list = map(lambda x: x.get_sheet(create_new_sheets), page_list)
-# doc.Regenerate()
-# list_2D = map(lambda x: x.create_2D(), page_list)
-map(lambda x: x.set_parameters() for x in dia_list)
+sheet_list = map(lambda x: x.get_sheet(create_new_sheets), page_list)
+doc.Regenerate()
+list_2D = map(lambda x: x.create_2D(), page_list)
+map(lambda x: x.set_parameters(), dia_list)
 
 # #========Place diagramms========
 # # map(lambda x: x.placeDiagramm(), footers)
 # IN DEVELOPMENT
-
 
 # =========End transaction
 TransactionManager.Instance.TransactionTaskDone()
 
 # OUT = [x.dia_on_page for x in page_list]
 # OUT = [x.get_dia_list() for x in page_list]
-OUT = [x.dia_sys for x in dia_list]
+OUT = [x.param_list for x in dia_list]
