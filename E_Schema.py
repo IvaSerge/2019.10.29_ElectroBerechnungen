@@ -382,83 +382,83 @@ class dia:
 		else:
 			pass
 
-	def getLocation(self):
-		global dialist
-		brdi = self.brdIndex
-		sysi = self.sysIndex
-		if not(self.schType):
-			raise ValueError("No 2D diagram was found for {},{}".format(brdi, sysi))
+	# def getLocation(self):
+	# 	global dialist
+	# 	brdi = self.brdIndex
+	# 	sysi = self.sysIndex
+	# 	if not(self.schType):
+	# 		raise ValueError("No 2D diagram was found for {},{}".format(brdi, sysi))
 
-		try:
-			modulSize = self.schType.LookupParameter("E_PositionsHeld").AsInteger()
-		except:
-			raise ValueError("No Type Parameter \"E_PositionsHeld\" in Family {0.schType.Family.Name}".format(self))
-		nextPos = dia.currentPos + modulSize
+	# 	try:
+	# 		modulSize = self.schType.LookupParameter("E_PositionsHeld").AsInteger()
+	# 	except:
+	# 		raise ValueError("No Type Parameter \"E_PositionsHeld\" in Family {0.schType.Family.Name}".format(self))
+	# 	nextPos = dia.currentPos + modulSize
 
-		# Start modul
-		if sysi == 0 and brdi == 0:
-			# if it is not the first board - create page break
-			if brdi == 0:
-				dia.currentPos = 1
-				dia.currentPage += 1
-				self.location = dia.coord_list[dia.currentPos]
-			self.pageN = dia.currentPage
-			dia.currentPos += modulSize
+	# 	# Start modul
+	# 	if sysi == 0 and brdi == 0:
+	# 		# if it is not the first board - create page break
+	# 		if brdi == 0:
+	# 			dia.currentPos = 1
+	# 			dia.currentPage += 1
+	# 			self.location = dia.coord_list[dia.currentPos]
+	# 		self.pageN = dia.currentPage
+	# 		dia.currentPos += modulSize
 
-		# Header
-		elif sysi == 10 and not(self.rvtSys):
-			self.location = dia.coord_list[0]
-			# brdIndex == is equal page number
-			self.pageN = self.brdIndex
+	# 	# Header
+	# 	elif sysi == 10 and not(self.rvtSys):
+	# 		self.location = dia.coord_list[0]
+	# 		# brdIndex == is equal page number
+	# 		self.pageN = self.brdIndex
 
-		# Footer
-		elif sysi == 11 and not(self.rvtSys):
-			lastDia = [
-				x.schType for x in diaList
-				if x.brdIndex == brdi][-1]
-			previousModulSize = lastDia.LookupParameter("E_PositionsHeld").AsInteger()
-			lastIndex = [
-				dia.coord_list.index((x.location)) for x in diaList
-				if x.brdIndex == brdi][-1]
-			footIndex = lastIndex + previousModulSize
+	# 	# Footer
+	# 	elif sysi == 11 and not(self.rvtSys):
+	# 		lastDia = [
+	# 			x.schType for x in diaList
+	# 			if x.brdIndex == brdi][-1]
+	# 		previousModulSize = lastDia.LookupParameter("E_PositionsHeld").AsInteger()
+	# 		lastIndex = [
+	# 			dia.coord_list.index((x.location)) for x in diaList
+	# 			if x.brdIndex == brdi][-1]
+	# 		footIndex = lastIndex + previousModulSize
 
-			# enought space for Footer
-			if footIndex <= 10:
-				self.location = dia.coord_list[footIndex]
-				self.pageN = max([
-					x.pageN for x in diaList
-					if x.brdIndex == brdi])
-				dia.currentPos += modulSize
+	# 		# enought space for Footer
+	# 		if footIndex <= 10:
+	# 			self.location = dia.coord_list[footIndex]
+	# 			self.pageN = max([
+	# 				x.pageN for x in diaList
+	# 				if x.brdIndex == brdi])
+	# 			dia.currentPos += modulSize
 
-			else:
-				# not enought space for next Footer
-				# no need to created footer
-				self.location = None
-				self.pageN = None
+	# 		else:
+	# 			# not enought space for next Footer
+	# 			# no need to created footer
+	# 			self.location = None
+	# 			self.pageN = None
 
-		# Filler
-		elif not(self.rvtSys) and sysi < 10:
-			self.location = dia.coord_list[sysi]
-			# brdIndex == is equal page number
-			self.pageN = self.brdIndex
+		# # Filler
+		# elif not(self.rvtSys) and sysi < 10:
+		# 	self.location = dia.coord_list[sysi]
+		# 	# brdIndex == is equal page number
+		# 	self.pageN = self.brdIndex
 
-		# next modules
-		# enought space for next element
-		elif nextPos <= 9:
-			self.location = dia.coord_list[dia.currentPos]
-			dia.currentPos = nextPos
-			self.pageN = dia.currentPage
+		# # next modules
+		# # enought space for next element
+		# elif nextPos <= 9:
+		# 	self.location = dia.coord_list[dia.currentPos]
+		# 	dia.currentPos = nextPos
+		# 	self.pageN = dia.currentPage
 
-		# next modules
-		# not enought space for next element
-		elif nextPos > 9:
-			dia.currentPage += 1
-			dia.currentPos = 1
-			self.location = dia.coord_list[dia.currentPos]
-			dia.currentPos = 1 + modulSize
-			self.pageN = dia.currentPage
-		else:
-			pass
+		# # next modules
+		# # not enought space for next element
+		# elif nextPos > 9:
+		# 	dia.currentPage += 1
+		# 	dia.currentPos = 1
+		# 	self.location = dia.coord_list[dia.currentPos]
+		# 	dia.currentPos = 1 + modulSize
+		# 	self.pageN = dia.currentPage
+		# else:
+		# 	pass
 
 	def placeDiagramm(self):
 		global doc
@@ -602,7 +602,7 @@ class page:
 			# check how much free modules available
 			dia_used_modules = sum([
 				x.dia_module_size for x in dia_on_page])
-			dia_free_modules = 9 - dia_used_modules
+			dia_free_modules = 10 - dia_used_modules
 			for _ in range(dia_free_modules):
 				filler = dia(None, None, "Filler")
 				filler.get_type()
