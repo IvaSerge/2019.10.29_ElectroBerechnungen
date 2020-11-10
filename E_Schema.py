@@ -381,16 +381,24 @@ class dia:
 			sheetLst[self.pageN])
 
 	def set_parameters(self):
+		elem = self.dia_inst
+
+		if self.dia_level and elem.LookupParameter("E_StromschieneEbene"):
+			elem.LookupParameter("E_StromschieneEbene").Set(self.dia_level)
+
+		# check if it is any parameter to be set
+		if not(self.param_list):
+			return None
+
 		for i, j in self.param_list:
-			elem = self.dia_inst
 			if not(j):
 				j = " "
 			setParVal(elem, i, j)
-			setParVal(elem, "E_StromschieneEbene", self.dia_level)
+		return elem
 
 
 class page:
-	"""Page class conteins info and methods for creating pages"""
+	"""Page class contains info and methods for creating pages"""
 
 	# coordinates of points on scheet
 	coord_list = list()
@@ -510,7 +518,7 @@ class page:
 			map(lambda x: dia_on_page.append(x), branch_dia)
 
 		# =========Place header
-		# if it is the page 1 - no need to set install header
+		# if it is the page 1 - no need to set header
 		if page_n > 0:
 			header = dia(None, None, "Header")
 			header.get_type()
@@ -524,7 +532,7 @@ class page:
 			# if page number > 1 - set previous page number
 			if page_n > 1:
 				header.param_list.append(
-					["E_Page_previous", str(int(page_n) - 1)])
+					["E_Page_previous", str(int(page_n))])
 
 		# =========Place footer
 			# footer location - next to the last diagramm.
@@ -621,13 +629,21 @@ class page:
 				dia.dia_family_type,
 				self.sheet_inst)
 			outlist.append([insert_point, dia.dia_family_type, self.sheet_inst])
-			dia.set_parameters()
+
 			if position_index == 0:
 				# it is start position
 				position_index += 1
 			else:
 				position_index += dia.dia_module_size
 		return outlist
+
+	def set_par_for_all_dia_on_page(self):
+		global doc
+		doc.Regenerate()
+		dia_on_page = self.dia_on_page
+		if not(dia_on_page):
+			return None
+		return [x.set_parameters() for x in dia_on_page]
 
 
 MAIN_BRD_NAME = IN[0]
@@ -665,11 +681,13 @@ TransactionManager.Instance.EnsureInTransaction(doc)
 sheet_list = map(lambda x: x.get_sheet(create_new_sheets), page_list)
 doc.Regenerate()
 list_2D = map(lambda x: x.create_2D(), page_list)
+map(lambda x: x.set_par_for_all_dia_on_page(), page_list)
+
+# outlist = [x.dia_inst for x in page_list[1].dia_on_page]
+# setParVal(outlist[0], "E_StromschieneEbene", 1)
 
 TransactionManager.Instance.TransactionTaskDone()
 # =========End transaction
 
-
-# OUT = [x.page_number for x in page_list]
-# OUT = [x.dia_on_page for x in page_list]
-OUT = [x.dia_description for x in page_list[1].dia_on_page]
+# OUT = [x.page_number for x in page_list]s
+OUT = [x.dia_on_page for x in page_list]
