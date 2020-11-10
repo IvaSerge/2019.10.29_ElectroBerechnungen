@@ -535,14 +535,16 @@ class page:
 					["E_Page_previous", str(int(page_n))])
 
 		# =========Place footer
-			# footer location - next to the last diagramm.
-			# Can be inserted in module 9.
+		# footer location - next to the last diagramm.
+		footer = dia(None, None, "Footer")
+		dia_on_page.append(footer)
+		# Can be inserted in module 9.
 
-			# if it is the last page - no need to set up next page number
+		# if it is the last page - no need to set up next page number
 
-			# next page Number to be set for all pages > 1
+		# next page Number to be set for all pages > 1
 
-			# diagramm level = level of the last diagramm on the page
+		# diagramm level = level of the last diagramm on the page
 
 		# =========Place filler
 		if dia_on_page:
