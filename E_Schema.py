@@ -20,8 +20,6 @@ from RevitServices.Persistence import DocumentManager
 from RevitServices.Transactions import TransactionManager
 doc = DocumentManager.Instance.CurrentDBDocument
 
-# region "global functions"
-
 
 def GetBuiltInParam(paramName):
 	builtInParams = System.Enum.GetValues(BuiltInParameter)
@@ -234,7 +232,6 @@ def create_dia(_brd_name, _brd_sys_index=0):
 			for subboard_dia in subboard_dia_list:
 				brd_sys_list.append(subboard_dia)
 	return brd_sys_list
-# endregion
 
 
 class dia:
@@ -344,6 +341,12 @@ class dia:
 			# diagramm is hardcoded
 			sch_family = "E_SCH_Filler"
 			sch_type = "Filler_Start"
+
+		# for "Footer"
+		elif dia_description == "Footer":
+			# diagramm is hardcoded
+			sch_family = "E_SCH_Filler"
+			sch_type = "Filler_End"
 
 		else:
 			pass
@@ -537,6 +540,7 @@ class page:
 		# =========Place footer
 		# footer location - next to the last diagramm.
 		footer = dia(None, None, "Footer")
+		footer.get_type()
 		dia_on_page.append(footer)
 		# Can be inserted in module 9.
 
@@ -675,18 +679,12 @@ page.check_page_ammount(create_new_sheets)
 page_list = [page(i) for i in range(page.total_pages)]
 map(lambda x: x.fill_page(), page_list)
 
-# endregion
-
 # =========Start transaction
 TransactionManager.Instance.EnsureInTransaction(doc)
 
 sheet_list = map(lambda x: x.get_sheet(create_new_sheets), page_list)
-doc.Regenerate()
 list_2D = map(lambda x: x.create_2D(), page_list)
 map(lambda x: x.set_par_for_all_dia_on_page(), page_list)
-
-# outlist = [x.dia_inst for x in page_list[1].dia_on_page]
-# setParVal(outlist[0], "E_StromschieneEbene", 1)
 
 TransactionManager.Instance.TransactionTaskDone()
 # =========End transaction
