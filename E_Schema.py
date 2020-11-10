@@ -535,16 +535,33 @@ class page:
 			# if page number > 1 - set previous page number
 			if page_n > 1:
 				header.param_list.append(
-					["E_Page_previous", str(int(page_n))])
+					["E_Page_previous", str(int(page_n - 1))])
 
 		# =========Place footer
-		# footer location - next to the last diagramm.
-		footer = dia(None, None, "Footer")
-		footer.get_type()
-		dia_on_page.append(footer)
-		# Can be inserted in module 9.
+		if page_n > 0:
+			# footer location - next to the last diagramm.
+			footer = dia(None, None, "Footer")
+			footer.get_type()
 
-		# if it is the last page - no need to set up next page number
+			if page_n != page.total_pages - 1:
+				# if it is the not the last page
+				# set next page
+				footer.param_list.append(
+					["E_Page_next", str(int(page_n + 1))])
+
+				# dia level == the dia of the next page
+				next_page_first = page.divide_pro_page(dia_list)[page_n][0]
+				footer.dia_level = next_page_first.dia_level
+
+			else:
+				# if it is the last page - no need to set up next page number
+				# dia level == level of the last elem on page
+				last_on_page = dia_on_page[-1]
+				footer.dia_level = last_on_page.dia_level
+
+			dia_on_page.append(footer)
+
+			# footer level = level of the diagramm on the page
 
 		# next page Number to be set for all pages > 1
 
@@ -610,8 +627,8 @@ class page:
 
 		# set new sheet parameters
 		param_list = list()
-		param_list.append(["MC Number of Pages", str(total_pages)])
-		param_list.append(["MC Page Number", str(page_number + 1)])
+		param_list.append(["MC Number of Pages", str(total_pages - 1)])
+		param_list.append(["MC Page Number", str(page_number)])
 		param_list.append(["SHEET_NAME", sheet_name])
 		param_list.append(["SHEET_NUMBER", sheet_num])
 		param_list.append(["MC Panel Code", MAIN_BRD_NAME])
@@ -621,11 +638,9 @@ class page:
 
 	def create_2D(self):
 		global doc
-
 		dia_on_page = self.dia_on_page
 		if not(dia_on_page):
 			return None
-
 		position_index = 0
 		outlist = list()
 		for dia in dia_on_page:
@@ -635,7 +650,6 @@ class page:
 				dia.dia_family_type,
 				self.sheet_inst)
 			outlist.append([insert_point, dia.dia_family_type, self.sheet_inst])
-
 			if position_index == 0:
 				# it is start position
 				position_index += 1
@@ -689,5 +703,6 @@ map(lambda x: x.set_par_for_all_dia_on_page(), page_list)
 TransactionManager.Instance.TransactionTaskDone()
 # =========End transaction
 
-# OUT = [x.page_number for x in page_list]s
-OUT = [x.dia_on_page for x in page_list]
+# OUT = [x.page_number for x in page_list]
+# OUT = [x.dia_on_page for x in page_list]
+OUT = page.total_pages
