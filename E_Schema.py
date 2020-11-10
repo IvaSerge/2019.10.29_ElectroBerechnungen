@@ -368,19 +368,10 @@ class dia:
 
 	def get_parameters(self):
 		"""Get parameters for Main board and brunch systems"""
-
-		# reed parameters in electrical board
-		# IN DEVELOPMENT
-		if self.dia_description == "Feeder":
-				pass
-
 		# for system
-		elif self.dia_description == "Branch":
-			self.param_list = [
-				[x, getParVal(self.dia_sys, x)]
-				for x in dia.par_to_set]
-		else:
-			pass
+		self.param_list = [
+			[x, getParVal(self.dia_sys, x)]
+			for x in dia.par_to_set]
 
 	def placeDiagramm(self):
 		global doc
@@ -400,18 +391,19 @@ class dia:
 
 class page:
 	"""Page class conteins info and methods for creating pages"""
+
 	# coordinates of points on scheet
 	coord_list = list()
 	coord_list.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
 	coord_list.append(XYZ(0.113188976377707, 0.66929133858268, 0))
 	coord_list.append(XYZ(0.204396325459072, 0.66929133858268, 0))
 	coord_list.append(XYZ(0.295603674540437, 0.66929133858268, 0))
-	coord_list.append(XYZ(0.386811023621802, 0.669291338582679, 0))
-	coord_list.append(XYZ(0.478018372703167, 0.669291338582679, 0))
-	coord_list.append(XYZ(0.569225721784533, 0.669291338582679, 0))
-	coord_list.append(XYZ(0.660433070865899, 0.669291338582678, 0))
-	coord_list.append(XYZ(0.751640419947264, 0.669291338582678, 0))
-	coord_list.append(XYZ(0.84284776902863, 0.669291338582678, 0))
+	coord_list.append(XYZ(0.386811023621802, 0.66929133858268, 0))
+	coord_list.append(XYZ(0.478018372703167, 0.66929133858268, 0))
+	coord_list.append(XYZ(0.569225721784533, 0.66929133858268, 0))
+	coord_list.append(XYZ(0.660433070865899, 0.66929133858268, 0))
+	coord_list.append(XYZ(0.751640419947264, 0.66929133858268, 0))
+	coord_list.append(XYZ(0.84284776902863, 0.66929133858268, 0))
 	coord_list.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
 
 	total_pages = None
@@ -494,7 +486,7 @@ class page:
 		self.dia_on_page = None
 		self.sheet_inst = None
 
-	def get_dia_list(self):
+	def fill_page(self):
 		"""Create list of diagramms to be put on the page
 
 		Create list of diagramms, footers and fillers for current page.
@@ -502,25 +494,49 @@ class page:
 		else - it is a page with diagramms
 		Header need to be placed for every page with diagramms
 		Maximum module size for A4 paper is 9.
-		If number of modules is less then 8 - fillers are created.
+		If number of modules is less then 9 - fillers are created.
 
 		return:
 			list of elements on the current page
 		"""
 
-		# place branch diagramms
 		global dia_list
 		page_n = self.page_number
-		dia_on_page = page.divide_pro_page(dia_list)[page_n - 1] \
-			if page_n != 0 else None
+		dia_on_page = list()
 
-		# place header
-		if dia_on_page:
-				header = dia(None, None, "Header")
-				header.get_type()
-				dia_on_page.insert(0, header)
+		# =========Place branch diagramms
+		if page_n > 0:
+			branch_dia = page.divide_pro_page(dia_list)[page_n - 1]
+			map(lambda x: dia_on_page.append(x), branch_dia)
 
-		# place filler
+		# =========Place header
+		# if it is the page 1 - no need to set install header
+		if page_n > 0:
+			header = dia(None, None, "Header")
+			header.get_type()
+			# header location is allways module 0.
+			dia_on_page.insert(0, header)
+
+			# header level = level of 1 diagramm on the page
+			frst_dia_lvl = dia_on_page[1].dia_level
+			header.dia_level = frst_dia_lvl
+
+			# if page number > 1 - set previous page number
+			if page_n > 1:
+				header.param_list.append(
+					["E_Page_previous", str(int(page_n) - 1)])
+
+		# =========Place footer
+			# footer location - next to the last diagramm.
+			# Can be inserted in module 9.
+
+			# if it is the last page - no need to set up next page number
+
+			# next page Number to be set for all pages > 1
+
+			# diagramm level = level of the last diagramm on the page
+
+		# =========Place filler
 		if dia_on_page:
 			# check how much free modules available
 			dia_used_modules = sum([
@@ -605,6 +621,7 @@ class page:
 				dia.dia_family_type,
 				self.sheet_inst)
 			outlist.append([insert_point, dia.dia_family_type, self.sheet_inst])
+			dia.set_parameters()
 			if position_index == 0:
 				# it is start position
 				position_index += 1
@@ -638,7 +655,7 @@ existing_sheets = page.get_existing_sheets(MAIN_BRD_NAME)
 # check is it enough existing pages
 page.check_page_ammount(create_new_sheets)
 page_list = [page(i) for i in range(page.total_pages)]
-map(lambda x: x.get_dia_list(), page_list)
+map(lambda x: x.fill_page(), page_list)
 
 # endregion
 
@@ -648,11 +665,11 @@ TransactionManager.Instance.EnsureInTransaction(doc)
 sheet_list = map(lambda x: x.get_sheet(create_new_sheets), page_list)
 doc.Regenerate()
 list_2D = map(lambda x: x.create_2D(), page_list)
-map(lambda x: x.set_parameters(), dia_list)
 
-# =========End transaction
 TransactionManager.Instance.TransactionTaskDone()
+# =========End transaction
 
+
+# OUT = [x.page_number for x in page_list]
 # OUT = [x.dia_on_page for x in page_list]
-# OUT = [x.get_dia_list() for x in page_list]
-# OUT = [x.dia_index for x in dia_list][12]
+OUT = [x.dia_description for x in page_list[1].dia_on_page]
