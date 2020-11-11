@@ -272,7 +272,7 @@ class dia:
 
 	par_to_set = list()
 	par_to_set.append("RBS_ELEC_CIRCUIT_NAME")
-	par_to_set.append("RBS_ELEC_CIRCUIT_NUMBER")
+	# par_to_set.append("RBS_ELEC_CIRCUIT_NUMBER")
 	par_to_set.append("RBS_ELEC_CIRCUIT_WIRE_TYPE_PARAM")
 	par_to_set.append("CBT:CIR_Kabel")
 	par_to_set.append("CBT:CIR_Nennstrom")
@@ -300,10 +300,10 @@ class dia:
 			self.brd_name = self.brd.Name
 
 		elif _description == "Feeder":
-			self.circuit_number = "Feeder"
+			self.circuit_number = None
 			global MAIN_BRD_INST
 			self.brd = MAIN_BRD_INST
-			self.brd_name = "Main board"
+			self.brd_name = self.brd.Name
 
 		else:
 			pass
@@ -371,10 +371,30 @@ class dia:
 
 	def get_parameters(self):
 		"""Get parameters for Main board and brunch systems"""
-		# for system
+		description = self.dia_description
+
+		# for system if description is "Branch"
+
 		self.param_list = [
 			[x, getParVal(self.dia_sys, x)]
 			for x in dia.par_to_set]
+
+		if description == "Branch":
+			# Update circuit number.
+			# Circuit number = busbur number + system number
+			# busbur number is panel Prefix
+			# circuit number - 2 symbols.
+			sys_prefix = self.brd.get_Parameter(
+				BuiltInParameter.RBS_ELEC_CIRCUIT_PREFIX).AsString()
+			sys_num = '{:02}'.format(int(self.circuit_number))
+			sys_num_to_set = sys_prefix + sys_num
+			self.param_list.append(["RBS_ELEC_CIRCUIT_NUMBER", sys_num_to_set])
+
+		elif description == "Feeder":
+			self.param_list.append(["RBS_ELEC_CIRCUIT_NUMBER", "Einspeisung"])
+
+		else:
+			pass
 
 	def placeDiagramm(self):
 		global doc
@@ -558,14 +578,7 @@ class page:
 				# dia level == level of the last elem on page
 				last_on_page = dia_on_page[-1]
 				footer.dia_level = last_on_page.dia_level
-
 			dia_on_page.append(footer)
-
-			# footer level = level of the diagramm on the page
-
-		# next page Number to be set for all pages > 1
-
-		# diagramm level = level of the last diagramm on the page
 
 		# =========Place filler
 		if dia_on_page:
@@ -703,6 +716,6 @@ map(lambda x: x.set_par_for_all_dia_on_page(), page_list)
 TransactionManager.Instance.TransactionTaskDone()
 # =========End transaction
 
-# OUT = [x.page_number for x in page_list]
+OUT = [x.param_list for x in dia_list]
 # OUT = [x.dia_on_page for x in page_list]
-OUT = page.total_pages
+# OUT = page.total_pages
