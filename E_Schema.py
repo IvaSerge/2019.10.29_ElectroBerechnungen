@@ -183,6 +183,8 @@ def create_dia(_brd_name, _brd_sys_index=0):
 	"""
 	global doc
 	brd_sys_list = list()
+	# start from phase L1
+	sch_phase = 1
 
 	try:
 		brd_instance = getByCatAndStrParam(
@@ -209,6 +211,15 @@ def create_dia(_brd_name, _brd_sys_index=0):
 	for circuit in brd_circuits:
 		diagramm = dia(circuit, sys_upper_index, "Branch")
 		brd_sys_list.append(diagramm)
+
+		# set dia_phase
+		# if it is 1phase dia - set phase
+		if circuit.PolesNumber == 1:
+			diagramm.dia_phase = sch_phase
+			sch_phase = sch_phase + 1
+			# calculating next phase
+			if sch_phase > 3:
+				sch_phase = 1
 
 		# check if circuit contains subboard
 		elems = [elem for elem in circuit.Elements]
@@ -291,6 +302,7 @@ class dia:
 		self.dia_family_type = None
 		self.dia_module_size = int()
 		self.dia_inst = None
+		dia.dia_phase = int()
 
 		if _description == "Branch":
 			self.circuit_number = str(getParVal(
@@ -387,8 +399,10 @@ class dia:
 			sys_prefix = self.brd.get_Parameter(
 				BuiltInParameter.RBS_ELEC_CIRCUIT_PREFIX).AsString()
 			sys_num = '{:02}'.format(int(self.circuit_number))
-			sys_num_to_set = sys_prefix + sys_num
-			self.param_list.append(["RBS_ELEC_CIRCUIT_NUMBER", sys_num_to_set])
+			self.param_list.append(["RBS_ELEC_CIRCUIT_NUMBER", sys_num])
+			# self.param_list.append(["RBS_ELEC_CIRCUIT_PREFIX", sys_prefix])
+			self.param_list.append(["E_Stromkreisprefix", sys_prefix])
+			self.param_list.append(["MC Phases", str(self.dia_phase)])
 
 		elif description == "Feeder":
 			self.param_list.append(["RBS_ELEC_CIRCUIT_NUMBER", "Einspeisung"])
@@ -716,6 +730,6 @@ map(lambda x: x.set_par_for_all_dia_on_page(), page_list)
 TransactionManager.Instance.TransactionTaskDone()
 # =========End transaction
 
-OUT = [x.param_list for x in dia_list]
+OUT = [x.dia_phase for x in dia_list]
 # OUT = [x.dia_on_page for x in page_list]
 # OUT = page.total_pages
