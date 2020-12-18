@@ -526,6 +526,12 @@ class page:
 		elif not(_create_new) and ex_sh_ammount < total_pages:
 			raise TypeError("Not enought existing pages")
 
+	@classmethod
+	def delete_not_used(cls, sheets_in_use):
+		for sheet in cls.existing_sheets:
+			if sheet not in sheets_in_use:
+				doc.Delete(sheet.Id)
+
 	def __init__(self, _page_number):
 		self.page_number = _page_number
 		self.dia_on_page = None
@@ -633,10 +639,12 @@ class page:
 			# delete old page and create new
 			doc.Delete(current_sheet.Id)
 			current_sheet = ViewSheet.Create(doc, title_block.Id)
+			existing_sheets[page_number] = current_sheet
 
 		elif _create_new and not(current_sheet):
 			# create new pages only if no existing pages found
 			current_sheet = ViewSheet.Create(doc, title_block.Id)
+			existing_sheets[page_number] = current_sheet
 
 		else:
 			# existing sheet found.
@@ -724,12 +732,12 @@ map(lambda x: x.fill_page(), page_list)
 TransactionManager.Instance.EnsureInTransaction(doc)
 
 sheet_list = map(lambda x: x.get_sheet(create_new_sheets), page_list)
+# delete sheets, that not in use any more
+page.delete_not_used(sheet_list)
 list_2D = map(lambda x: x.create_2D(), page_list)
 map(lambda x: x.set_par_for_all_dia_on_page(), page_list)
 
 TransactionManager.Instance.TransactionTaskDone()
 # =========End transaction
 
-OUT = [x.dia_phase for x in dia_list]
-# OUT = [x.dia_on_page for x in page_list]
-# OUT = page.total_pages
+OUT = [x.dia_on_page for x in page_list]
