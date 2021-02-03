@@ -644,7 +644,7 @@ class page:
 		elif _create_new and not(current_sheet):
 			# create new pages only if no existing pages found
 			current_sheet = ViewSheet.Create(doc, title_block.Id)
-			existing_sheets[page_number] = current_sheet
+			existing_sheets.append(current_sheet)
 
 		else:
 			# existing sheet found.
