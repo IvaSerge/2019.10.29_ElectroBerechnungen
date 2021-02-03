@@ -740,4 +740,8 @@ map(lambda x: x.set_par_for_all_dia_on_page(), page_list)
 TransactionManager.Instance.TransactionTaskDone()
 # =========End transaction
 
+
 OUT = [x.dia_on_page for x in page_list]
+# OUT = [x.dia_phase for x in dia_list]
+# OUT = [x.dia_on_page for x in page_list]
+# OUT = page.total_pages
