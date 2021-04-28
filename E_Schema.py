@@ -283,12 +283,12 @@ class dia:
 
 	par_to_set = list()
 	par_to_set.append("RBS_ELEC_CIRCUIT_NAME")
-	# par_to_set.append("RBS_ELEC_CIRCUIT_NUMBER")
+	par_to_set.append("RBS_ELEC_CIRCUIT_NUMBER")
 	par_to_set.append("RBS_ELEC_CIRCUIT_WIRE_TYPE_PARAM")
-	par_to_set.append("CBT:CIR_Kabel")
-	par_to_set.append("CBT:CIR_Nennstrom")
-	par_to_set.append("CBT:CIR_Schutztyp")
-	par_to_set.append("CBT:CIR_Elektrischen Schlag")
+	par_to_set.append("E_CableSize")
+	par_to_set.append("E_Sch_Nennstrom")
+	par_to_set.append("E_Sch_Schutztyp")
+	par_to_set.append("E_Sch_Elektrischen Schlag ")
 	par_to_set.append("E_Stromkreisprefix")
 
 	def __init__(self, _rvtSys, _brd_lvl, _description):
