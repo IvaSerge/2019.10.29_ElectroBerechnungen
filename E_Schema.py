@@ -288,6 +288,7 @@ class dia:
 	par_to_set.append("E_CableSize")
 	par_to_set.append("E_Sch_Nennstrom")
 	par_to_set.append("E_Sch_Schutztyp")
+	par_to_set.append("E_Sch_Schutztyp_kurz")
 	par_to_set.append("E_Sch_Elektrischen Schlag ")
 	par_to_set.append("E_Stromkreisprefix")
 
@@ -400,7 +401,6 @@ class dia:
 				BuiltInParameter.RBS_ELEC_CIRCUIT_PREFIX).AsString()
 			sys_num = '{:02}'.format(int(self.circuit_number))
 			self.param_list.append(["RBS_ELEC_CIRCUIT_NUMBER", sys_num])
-			# self.param_list.append(["RBS_ELEC_CIRCUIT_PREFIX", sys_prefix])
 			self.param_list.append(["E_Stromkreisprefix", sys_prefix])
 			self.param_list.append(["MC Phases", str(self.dia_phase)])
 
