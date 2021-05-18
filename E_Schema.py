@@ -283,14 +283,14 @@ class dia:
 
 	par_to_set = list()
 	par_to_set.append("RBS_ELEC_CIRCUIT_NAME")
-	par_to_set.append("RBS_ELEC_CIRCUIT_NUMBER")
+	# par_to_set.append("RBS_ELEC_CIRCUIT_NUMBER")
 	par_to_set.append("RBS_ELEC_CIRCUIT_WIRE_TYPE_PARAM")
 	par_to_set.append("E_CableSize")
 	par_to_set.append("E_Sch_Nennstrom")
 	par_to_set.append("E_Sch_Schutztyp")
 	par_to_set.append("E_Sch_Schutztyp_kurz")
 	par_to_set.append("E_Sch_Elektrischen Schlag ")
-	par_to_set.append("E_Stromkreisprefix")
+	# par_to_set.append("E_Stromkreisprefix")
 
 	def __init__(self, _rvtSys, _brd_lvl, _description):
 		self.dia_level = _brd_lvl
@@ -742,6 +742,4 @@ TransactionManager.Instance.TransactionTaskDone()
 
 
 OUT = [x.dia_on_page for x in page_list]
-# OUT = [x.dia_phase for x in dia_list]
-# OUT = [x.dia_on_page for x in page_list]
-# OUT = page.total_pages
+# OUT = [x.param_list for x in dia_list]
