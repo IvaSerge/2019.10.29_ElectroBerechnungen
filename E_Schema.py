@@ -399,7 +399,9 @@ class dia:
 			# circuit number - 2 symbols.
 			sys_prefix = self.brd.get_Parameter(
 				BuiltInParameter.RBS_ELEC_CIRCUIT_PREFIX).AsString()
-			sys_num = '{:02}'.format(int(self.circuit_number))
+			# add leading zeros
+			# sys_num = '{:02}'.format(int(self.circuit_number))
+			sys_num = self.circuit_number
 			self.param_list.append(["RBS_ELEC_CIRCUIT_NUMBER", sys_num])
 			self.param_list.append(["E_Stromkreisprefix", sys_prefix])
 			self.param_list.append(["MC Phases", str(self.dia_phase)])
