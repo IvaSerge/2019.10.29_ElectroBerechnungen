@@ -95,6 +95,8 @@ def getSystems(_brd):
 	if len(board_branch_systems) == len(board_all_systems):
 		raise ValueError("Board \"%s\" have no feeder" % brd_name)
 
+	# Strings in electrical circuit are not allowed
+	# add additional check and transform if necessery
 	board_branch_systems.sort(
 		key=lambda x:
 		float(getParVal(x, "RBS_ELEC_CIRCUIT_NUMBER")))
