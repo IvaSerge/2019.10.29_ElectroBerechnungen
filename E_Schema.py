@@ -20,10 +20,11 @@ from RevitServices.Persistence import DocumentManager
 from RevitServices.Transactions import TransactionManager
 doc = DocumentManager.Instance.CurrentDBDocument
 
+
 def GetBuiltInParam(paramName):
 	builtInParams = System.Enum.GetValues(BuiltInParameter)
 	param = []
-	
+
 	for i in builtInParams:
 		if i.ToString() == paramName:
 			param.append(i)
@@ -31,6 +32,7 @@ def GetBuiltInParam(paramName):
 		else:
 			continue
 	return param[0]
+
 
 def SetupParVal(elem, name, pValue):
 	global doc
@@ -41,7 +43,8 @@ def SetupParVal(elem, name, pValue):
 		elem.get_Parameter(bip).Set(pValue)
 	return elem
 
-def getSystems (_brd):
+
+def getSystems(_brd):
 	allsys = _brd.MEPModel.ElectricalSystems
 	lowsys = _brd.MEPModel.AssignedElectricalSystems
 	if lowsys:
@@ -55,6 +58,7 @@ def getSystems (_brd):
 	else:
 		return list(allsys)
 
+
 def setPageParam(_lst):
 	global doc
 	global brdName
@@ -65,7 +69,8 @@ def setPageParam(_lst):
 	page.get_Parameter(BuiltInParameter.SHEET_NUMBER).Set(pNumber)
 	page.LookupParameter("MC Panel Code").Set(brdName)
 
-def getByCatAndStrParam (_bic, _bip, _val, _isType):
+
+def getByCatAndStrParam(_bic, _bip, _val, _isType):
 	global doc
 	if _isType:
 		fnrvStr = FilterStringEquals()
@@ -87,8 +92,8 @@ def getByCatAndStrParam (_bic, _bip, _val, _isType):
 			WhereElementIsNotElementType().\
 			WherePasses(filter).\
 			ToElements()
-	
 	return elem
+
 
 def addFooter(_diaList):
 	global sheetLst
@@ -96,48 +101,47 @@ def addFooter(_diaList):
 	schFamily = "E_SCH_Footer"
 	schType = ""
 	pages = max([x.pageN for x in _diaList]) + 1
-	
+
 	for i in range(1, pages):
 		onPage = [x for x in _diaList if x.pageN == i]
 		brd = onPage[0].brdIndex
 		brdSys = [x for x in _diaList
-				if x.brdIndex == brd
-				and x.sysIndex == 0][0]
-		cbType = brdSys.cbType
-		
-		#=====getType=====
-		#mainBrd systems QF 1phase
+			if x.brdIndex == brd and x.sysIndex == 0][0]
+
+		# =====getType=====
+		# mainBrd systems QF 1phase
 		if brd == 0 and brdSys.sysIndex == 0:
 			schType = "Primärreifen"
-		
-		#2lvl systems QF
+
+		# 2lvl systems QF
 		if brd > 0 and brdSys.cbType == "QF":
 			schType = "Zusätzliche"
-		
-		#2lvl systems FU+FI
+
+		# 2lvl systems FU+FI
 		if brd > 0 and "FI" in brdSys.cbType:
 			schType = "Zusätzliche_N"
-		
-		#=====getLocation=====
+
+		# =====getLocation=====
 		lastIndex = max([dia.coordList.index((x.location))
 							for x in _diaList
 							if x.pageN == i])
-		footIndex = lastIndex +1
+		footIndex = lastIndex + 1
 		locPnt = dia.coordList[footIndex]
-		
+
 		tp = getTypeByCatFamType(
 			BuiltInCategory.OST_GenericAnnotation,
 			schFamily,
 			schType)
-		
-		#=====create=====
+
+		# =====create=====
 		diaInst = doc.Create.NewFamilyInstance(
-					locPnt, 
-					tp,
-					sheetLst[i])
-		
+			locPnt,
+			tp,
+			sheetLst[i])
+
 		outlist.append(diaInst)
 	return outlist
+
 
 def addFiller(_diaList):
 	global sheetLst
@@ -145,56 +149,56 @@ def addFiller(_diaList):
 	schFamily = "E_SCH_Filler"
 	schType = "Filler"
 	tp = getTypeByCatFamType(
-			BuiltInCategory.OST_GenericAnnotation,
-			schFamily,
-			schType)
-	
+		BuiltInCategory.OST_GenericAnnotation,
+		schFamily,
+		schType)
+
 	pages = max([x.pageN for x in _diaList]) + 1
 	for i in range(1, pages):
-		onPage = [x for x in _diaList if x.pageN == i]
 		fillIndex = max([dia.coordList.index((x.location))
 							for x in _diaList
 							if x.pageN == i]) + 1
 		while fillIndex <= 9:
 			locPnt = dia.coordList[fillIndex]
 			diaInst = doc.Create.NewFamilyInstance(
-					locPnt, 
-					tp,
-					sheetLst[i])
+				locPnt,
+				tp,
+				sheetLst[i])
 			fillIndex += 1
 			outlist.append(diaInst)
 	return outlist
 
-def getTypeByCatFamType (_bic, _fam, _type):
+
+def getTypeByCatFamType(_bic, _fam, _type):
 	global doc
 	fnrvStr = FilterStringEquals()
-	
+
 	pvpType = ParameterValueProvider(ElementId(int(BuiltInParameter.SYMBOL_NAME_PARAM)))
 	pvpFam = ParameterValueProvider(ElementId(int(BuiltInParameter.ALL_MODEL_FAMILY_NAME)))
-	
+
 	fruleF = FilterStringRule(pvpFam, fnrvStr, _fam, False)
 	filterF = ElementParameterFilter(fruleF)
-	
+
 	fruleT = FilterStringRule(pvpType, fnrvStr, _type, False)
 	filterT = ElementParameterFilter(fruleT)
-	
+
 	filter = LogicalAndFilter(filterT, filterF)
-	
+
 	elem = FilteredElementCollector(doc).\
-	OfCategory(_bic).\
-	WhereElementIsElementType().\
-	WherePasses(filter).\
-	FirstElement()
-	
+		OfCategory(_bic).\
+		WhereElementIsElementType().\
+		WherePasses(filter).\
+		FirstElement()
 	return elem
+
 
 class dia():
 	"""Diagramm class"""
 	currentPage = 0
 	currentPos = 0
 	subBoardObj = None
-	
-	#coordinates of points on scheet
+
+	# coordinates of points on scheet
 	coordList = list()
 	coordList.append(XYZ(0.0738188976375485, 0.66929133858268, 0))
 	coordList.append(XYZ(0.113188976377707, 0.66929133858268, 0))
@@ -217,130 +221,129 @@ class dia():
 		self.pageN = None
 		self.diaInst = None
 		self.paramLst = list()
-		
+
 		try:
 			self.schType = self.__getType__()
 		except:
 			raise ValueError("No 2D diagram found for {0.brdIndex}, {0.sysIndex}".format(self))
-		
+
 		self.__getLocation__()
 		self.__getParameters__()
 
-	def __getType__ (self):
+	def __getType__(self):
 		global mainIsDisc
 		global doc
 		brdi = self.brdIndex
 		sysi = self.sysIndex
-		
-		#for "Einspeisung" if no disconnector in board
+
+		# for "Einspeisung" if no disconnector in board
 		if all([brdi == 0, sysi == 0, mainIsDisc == 0]):
 			schFamily = "E_SCH_Einspeisung-3P"
 			schType = "Schutzschalter"
-		
-		#for "Einspeisung" if disconnector in board
+
+		# for "Einspeisung" if disconnector in board
 		elif all([brdi == 0, sysi == 0, mainIsDisc > 0]):
 				schFamily = "E_SCH_Einspeisung-3P"
 				schType = "Ausschalter"
-		
-		#mainBrd systems QF 1phase
+
+		# mainBrd systems QF 1phase
 		elif all([brdi == 0, sysi > 0, self.cbType == "QF", self.nPoles == 1]):
 			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
 			schType = "Schutzschalter"
-		
-		#mainBrd systems QF-FI 1phase
+
+		# mainBrd systems QF-FI 1phase
 		elif all([brdi == 0, sysi > 0, self.cbType == "QF-FI", self.nPoles == 1]):
 			schFamily = "E_SCH_QF-FI-SCHALTER-1P"
 			schType = "QF-FI"
-		
-		#mainBrd systems QF 3phase
+
+		# mainBrd systems QF 3phase
 		elif all([brdi == 0, sysi > 0, self.cbType == "QF", self.nPoles == 3]):
 			schFamily = "E_SCH_SICHERUNGSSCHALTER-3P"
 			schType = "Schutzschalter"
-		
-		#2lvl main systems QF
+
+		# 2lvl main systems QF
 		elif all([brdi > 0, sysi == 0, self.cbType == "QF"]):
 			schFamily = "E_SCH_Einspeisung-3P_2lvl"
 			schType = "Schutzschalter"
 			dia.subBoardType = "QF"
-		
-		#2lvl main systems QF-FI
+
+		# 2lvl main systems QF-FI
 		elif all([brdi > 0, sysi == 0, self.cbType == "QF-FI"]):
 			schFamily = "E_SCH_Einspeisung-3P_2lvl"
 			schType = "QF-FI_Schalter"
 			dia.subBoardType = "QF-FI"
-		
-		#2lvl systems QF 1phase QF in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF", 
+
+		# 2lvl systems QF 1phase QF in subboard
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF",
 				self.nPoles == 1, self.cbType == "QF"]):
 			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
 			schType = "Schutzschalter_Zusätzliche"
-		
-		#2lvl systems QF 1phase QF-FI in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI", 
+
+		# 2lvl systems QF 1phase QF-FI in subboard
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI",
 						self.nPoles == 1, self.cbType == "QF"]):
 			schFamily = "E_SCH_SICHERUNGSSCHALTER-1P"
 			schType = "Schutzschalter_Zusätzliche_N"
-		
-		#2lvl systems QF 3phase QF in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF", 
+
+		# 2lvl systems QF 3phase QF in subboard
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF",
 				self.nPoles == 3, self.cbType == "QF"]):
 			schFamily = "E_SCH_SICHERUNGSSCHALTER-3P"
 			schType = "Schutzschalter_Zusätzliche"
-		
-		#2lvl systems QF 3phase QF in subboard
-		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI", 
+
+		# 2lvl systems QF 3phase QF in subboard
+		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI",
 				self.nPoles == 3, self.cbType == "QF"]):
 			schFamily = "E_SCH_SICHERUNGSSCHALTER-3P"
 			schType = "Schutzschalter_Zusätzliche_N"
-		
-		#2lvl systems QF-FI phase QF in subboard
+
+		# 2lvl systems QF-FI phase QF in subboard
 		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF",
 						self.nPoles == 1, self.cbType == "QF-FI"]):
 			schFamily = "E_SCH_QF-FI-SCHALTER-1P"
 			schType = "QF-FI_Zusätzliche"
-		
-		#2lvl systems QF-FI 1phase QF-FI in subboard
+
+		# 2lvl systems QF-FI 1phase QF-FI in subboard
 		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI",
 						self.nPoles == 1, self.cbType == "QF-FI"]):
 			schFamily = "E_SCH_QF-FI-SCHALTER-1P"
 			schType = "QF-FI_Zusätzliche_N"
 
-		#2lvl systems QF-FI 3phase QF in subboard
+		# 2lvl systems QF-FI 3phase QF in subboard
 		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF",
 						self.nPoles == 3, self.cbType == "QF-FI"]):
 			schFamily = "E_SCH_QF-FI-SCHALTER-3P"
 			schType = "QF-FI_Zusätzliche"
-		
-		#2lvl systems QF-FI 3phase QF-FI in subboard
+
+		# 2lvl systems QF-FI 3phase QF-FI in subboard
 		elif all([brdi > 0, sysi > 0, dia.subBoardType == "QF-FI",
 						self.nPoles == 3, self.cbType == "QF-FI"]):
 			schFamily = "E_SCH_QF-FI-SCHALTER-3P"
 			schType = "QF-FI_Zusätzliche_N"
-		
+
 		else:
 			schFamily = ""
 			schType = ""
-		
+
 		tp = getTypeByCatFamType(
-				BuiltInCategory.OST_GenericAnnotation,
-				schFamily,
-				schType)
-		
+			BuiltInCategory.OST_GenericAnnotation,
+			schFamily,
+			schType)
 		return tp
 
-	def __getLocation__ (self):
+	def __getLocation__(self):
 		modulSize = self.schType.LookupParameter("E_PositionsHeld").AsInteger()
-		
-		#Zerro modul 
+
+		# Zerro modul
 		if modulSize == 0:
 			dia.currentPage += 1
 			dia.currentPos = 0
 			self.location = dia.coordList[dia.currentPos]
 			dia.currentPos += 3
-		
-		#next modules
+
+		# next modules
 		nextPos = dia.currentPos + modulSize
-		if nextPos <= 9 and modulSize > 0: #enought
+		if nextPos <= 9 and modulSize > 0:  # enought
 			self.location = dia.coordList[dia.currentPos]
 			dia.currentPos = nextPos
 
@@ -349,21 +352,21 @@ class dia():
 			dia.currentPos = 1
 			self.location = dia.coordList[dia.currentPos]
 			dia.currentPos = 1 + modulSize
-		
-		#set page
+
+		# set page
 		self.pageN = dia.currentPage
 
-	def placeDiagramm (self):
+	def placeDiagramm(self):
 		global doc
 		global sheetLst
 		self.diaInst = doc.Create.NewFamilyInstance(
-					self.location, 
-					self.schType,
-					sheetLst[self.pageN])
+			self.location,
+			self.schType,
+			sheetLst[self.pageN])
 
-	def __getParameters__ (self):
+	def __getParameters__(self):
 		outlist = list()
-		#read info from board
+		# read info from board
 		if self.sysIndex == 0:
 			brd = [x for x in self.rvtSys.Elements][0]
 			frmSize = brd.LookupParameter("MC Frame Size").AsDouble()
@@ -373,129 +376,127 @@ class dia():
 			else:
 				cbType = "QS"
 
-		#read info from system
+		# read info from system
 		if self.sysIndex > 0:
 			frmSize = self.rvtSys.LookupParameter("MC Frame Size").AsDouble()
 			cbType = self.rvtSys.LookupParameter("MC CB Type").AsString()
-		
+
 		cName = self.rvtSys.get_Parameter(BuiltInParameter.RBS_ELEC_CIRCUIT_NAME).AsString()
 		cab = self.rvtSys.LookupParameter("E_CableType").AsString()
-		
+
 		outlist.append(["MC Frame Size", frmSize])
 		outlist.append(["E_CableType", cab])
 		outlist.append(["MC CB Type", cbType])
 		outlist.append(["RBS_ELEC_CIRCUIT_NAME", cName])
 		map(lambda x: self.paramLst.append(x), outlist)
 
-	def setParameters (self):
+	def setParameters(self):
 		for i in self.paramLst:
 			elem = self.diaInst
 			pName = i[0]
 			pValue = i[1]
-			SetupParVal (elem, pName, pValue)
+			SetupParVal(elem, pName, pValue)
 
-brdName = IN[0]
-createNewScheets = IN[1]
-reload = IN[2]
 
-#get mainBrd by name
+brdName = IN[0]  # type: ignore
+createNewScheets = IN[1]  # type: ignore
+reload = IN[2]  # type: ignore
+
+# get mainBrd by name
 mainBrd = getByCatAndStrParam(
-		BuiltInCategory.OST_ElectricalEquipment,
-		BuiltInParameter.RBS_ELEC_PANEL_NAME,
-		brdName, False)[0]
+	BuiltInCategory.OST_ElectricalEquipment,
+	BuiltInParameter.RBS_ELEC_PANEL_NAME,
+	brdName, False)[0]
 mainIsDisc = mainBrd.LookupParameter("E_IsDisconnector").AsInteger()
 
-#get connectedBrds
+# get connectedBrds
 connectedBrds = getByCatAndStrParam(
-		BuiltInCategory.OST_ElectricalEquipment,
-		BuiltInParameter.RBS_ELEC_PANEL_SUPPLY_FROM_PARAM,
-		brdName, False)
+	BuiltInCategory.OST_ElectricalEquipment,
+	BuiltInParameter.RBS_ELEC_PANEL_SUPPLY_FROM_PARAM,
+	brdName, False)
 
-connectedBrds = sorted(connectedBrds, key=lambda brd:brd.Name)
+connectedBrds = sorted(connectedBrds, key=lambda brd: brd.Name)
 
 lowbrds = list()
 map(lambda x: lowbrds.append(x), connectedBrds)
 
-lowbrds = [i for i in lowbrds if 
-			i.LookupParameter(
-			"MC Panel Code").AsString() == brdName]
+lowbrds = [i for i in lowbrds if i.LookupParameter(
+	"MC Panel Code").AsString() == brdName]
 
-#get systems
+# get systems
 lowSystems = map(lambda x: getSystems(x), lowbrds)
 lowSystemsId = list(itertools.chain.from_iterable(lowSystems))
 lowSystemsId = [i.Id for i in lowSystemsId]
 
 mainSystems = [i for i in getSystems(mainBrd)
-				if i.Id not in lowSystemsId]
+	if i.Id not in lowSystemsId]
 
 allSystems = list()
 allSystems.append(mainSystems)
 map(lambda x: allSystems.append(x), lowSystems)
 
 diaList = list()
-#========Initialaise dia class
+# ========Initialaise dia class
 for i, sysLst in enumerate(allSystems):
-	for j, sys in enumerate (sysLst):
-		diaList.append(dia(sys, i, j))
+	for j, syst in enumerate(sysLst):
+		diaList.append(dia(syst, i, j))
 
 pages = max([x.pageN for x in diaList])
 
-pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages+1)]
-pageNameLst = [brdName] * (pages+1)
+pageNumLst = [brdName + "_" + str(n).zfill(3) for n in range(pages + 1)]
+pageNameLst = [brdName] * (pages + 1)
 
-#get TitleBlocks
+# get TitleBlocks
 titleblatt = getByCatAndStrParam(
-		BuiltInCategory.OST_TitleBlocks,
-		BuiltInParameter.SYMBOL_NAME_PARAM,
-		"WSP_Plankopf_Shema_Titelblatt", True)[0]
+	BuiltInCategory.OST_TitleBlocks,
+	BuiltInParameter.SYMBOL_NAME_PARAM,
+	"WSP_Plankopf_Shema_Titelblatt", True)[0]
 
-#get schemaPlankopf
+# get schemaPlankopf
 shemaPlankopf = getByCatAndStrParam(
-		BuiltInCategory.OST_TitleBlocks,
-		BuiltInParameter.SYMBOL_NAME_PARAM,
-		"WSP_Plankopf_Shema", True)[0]
+	BuiltInCategory.OST_TitleBlocks,
+	BuiltInParameter.SYMBOL_NAME_PARAM,
+	"WSP_Plankopf_Shema", True)[0]
 
-#========Find sheets
+# ========Find sheets
 existingSheets = [i for i in FilteredElementCollector(doc).
-			OfCategory(BuiltInCategory.OST_Sheets).
-			WhereElementIsNotElementType().
-			ToElements()
-			if i.LookupParameter("MC Panel Code"
-			).AsString() == brdName]
+	OfCategory(BuiltInCategory.OST_Sheets).
+	WhereElementIsNotElementType().
+	ToElements()
+	if i.LookupParameter("MC Panel Code").AsString() == brdName]
 
-#=========Start transaction
+# =========Start transaction
 TransactionManager.Instance.EnsureInTransaction(doc)
 
-#========Create sheets========
+# ========Create sheets========
 sheetLst = list()
-if createNewScheets == False:
+if not(createNewScheets):
 	sheetLst = existingSheets
 	elemsOnSheet = list()
-	#remove all instances on sheet
+	# remove all instances on sheet
 	for sheet in sheetLst:
-		elems = FilteredElementCollector(doc
-				).OwnedByView(sheet.Id
-				).OfCategory(BuiltInCategory.OST_GenericAnnotation
-				).WhereElementIsNotElementType().ToElementIds()
+		elems = FilteredElementCollector(doc).OwnedByView(
+			sheet.Id).OfCategory(
+			BuiltInCategory.OST_GenericAnnotation).WhereElementIsNotElementType().ToElementIds()
 		map(lambda x: elemsOnSheet.append(x), elems)
 	typed_list = List[ElementId](elemsOnSheet)
 	doc.Delete(typed_list)
 
-if createNewScheets == True:
-	map(lambda x:doc.Delete(x.Id), existingSheets)
+if createNewScheets:
+	map(lambda x: doc.Delete(x.Id), existingSheets)
 	sheetLst.append(ViewSheet.Create(doc, titleblatt.Id))
-	map(lambda x:sheetLst.append(ViewSheet.Create(
-				doc, shemaPlankopf.Id)), range(pages))
-	map(lambda x:setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
+	map(lambda x: sheetLst.append(ViewSheet.Create(
+		doc, shemaPlankopf.Id)), range(pages))
+	map(lambda x: setPageParam(x), zip(sheetLst, pageNameLst, pageNumLst))
 
 map(lambda x: x.placeDiagramm(), diaList)
 footers = addFooter(diaList)
 fillers = addFiller(diaList)
 map(lambda x: x.setParameters(), diaList)
 
-#=========End transaction
+# =========End transaction
 TransactionManager.Instance.TransactionTaskDone()
 
-#OUT = map(lambda x: [dia.coordList.index(x.location), x.pageN], diaList)
+# OUT = map(lambda x: [dia.coordList.index(x.location), x.pageN], diaList)
 OUT = map(lambda x: x.paramLst, diaList)
-#OUT = mainIsDisc
+# OUT = mainIsDisc
